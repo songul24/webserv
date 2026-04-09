@@ -13,11 +13,11 @@
 class WebServer 
 {
         private:
-            int                         _epoll_fd;
-            std::vector<Server>         _servers;
-            Server*                     _fd_to_server[MAX_FD];
-            std::map<int, Connection>   _clients;
-            // Configuration
+                int                         _epoll_fd;
+                std::vector<Server>         _servers;
+                Server*                     _fd_to_server[MAX_FD];
+                std::map<int, Connection>   _clients;
+                // Configuration
 
         public:
                 WebServer();

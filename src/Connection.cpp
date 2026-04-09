@@ -1,4 +1,4 @@
-#include "Connection.hpp"
+#include "../include/Connection.hpp"
 
 
 Connection::Connection(Server* srv, int fd): _fd(fd), _server(srv)

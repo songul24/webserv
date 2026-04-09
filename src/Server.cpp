@@ -1,4 +1,4 @@
-#include "Server.hpp"
+#include "../include/Server.hpp"
 
 Server::Server(const std::string& port, const std::string& ip, int fd): _port(port)
 , _fd(fd), _ip(ip){}
