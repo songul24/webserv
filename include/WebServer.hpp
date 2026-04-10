@@ -1,8 +1,5 @@
 #pragma once
 
-
-
-
 #include "Server.hpp"
 #include "Connection.hpp"
 #include <map>
@@ -22,8 +19,8 @@ class WebServer
         public:
                 WebServer();
                 // WebServer(WebServer const &other);
-	        // WebServer& operator=(const WebServer& other);
-		~WebServer();
+            // WebServer& operator=(const WebServer& other);
+        ~WebServer();
 
                 void setupServer();
                 void runServer();

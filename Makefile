@@ -1,7 +1,7 @@
 NAME = webserv
 
-SRCS = src/main.cpp src/WebServer.cpp src/Connection.cpp src/Server.cpp \
-
+SRCS = $(shell cd src && ls | grep .cpp)
+# SRC = $(shell ls | grep '\.cpp')
 OBJS = $(SRCS:.cpp=.o)
 
 CXX = c++

@@ -45,6 +45,9 @@ class Connection {
 		~Connection();
 		// Connection & operator=(Connection const &other);
                 
+                // The parse request method :)
+                void    parseRequest( const char *buf );
+
                 //getters
                 int             getFd();
                 int             getSentlen();
