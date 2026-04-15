@@ -1,4 +1,4 @@
-#include "Request.hpp"
+#include "../include/Request.hpp"
 
 Request::Request( void ) {}
 
@@ -38,6 +38,11 @@ void	Request::setHeaders( std::map<std::string, std::string> h )
 	heads = h;
 }
 
+void	Request::setBody( std::string b )
+{
+	body = b;
+}
+
 // ---------------- GETTERS -----------------------------------
 
 std::string	Request::getMethod( void ) const
@@ -59,6 +64,12 @@ std::map<std::string, std::string>	Request::getHeaders( void ) const
 {
 	return (heads);
 }
+
+std::string	Request::getBod( void ) const
+{
+	return (body);
+}
+
 
 // ---------------- PRINT -----------------------------------
 

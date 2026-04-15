@@ -36,6 +36,11 @@ class Connection {
                 std::string    _response;
                 int             _respLen;
                 time_t          _last_active;
+                // Need it in my request parsing 😝
+                Request         _request;
+                bool            _is_there_body;
+                std::string     _raw_request;
+
 
 
         public:
@@ -46,7 +51,7 @@ class Connection {
 		// Connection & operator=(Connection const &other);
                 
                 // The parse request method :)
-                void    parseRequest( const char *buf );
+                void            parseRequest( const char *buf );
 
                 //getters
                 int             getFd();
@@ -56,6 +61,9 @@ class Connection {
                 Server*         getServer();
                 bool            getParsed();
                 time_t          get_Lastactive();
+                // Need it in my request parsing 😝
+                bool            getIsThereBody( void ) const;
+                std::string     getRawRequest( void ) const;
 
                 //setters
                 void    setSentlen(int sentLen);
@@ -63,4 +71,7 @@ class Connection {
                 void    setResponse(const std::string& response);
                 void    setRespLen(int respLen);
                 void    setLastactive(time_t last_active);
+                  // Need it in my request parsing 😝
+                void     setIsThereBody( bool t_or_f ) const;
+                void     setRawRequest( std::string raw ) const;
 };
