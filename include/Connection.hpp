@@ -19,6 +19,10 @@
 #include <ctime>
 #include <stdexcept>
 #include <csignal>
+#include <sys/stat.h>
+#include <cstdio>
+#include <dirent.h>
+
 class Server;
 
 #define BACKLOG 10   // how many pending connections queue will hold
