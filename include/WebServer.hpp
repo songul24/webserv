@@ -2,6 +2,7 @@
 
 #include "Server.hpp"
 #include "Connection.hpp"
+#include "Configfile.hpp"
 #include <map>
 
 // #define MAX_CLIENT 1024
