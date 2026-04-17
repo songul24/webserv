@@ -2,11 +2,12 @@
 
 #include "Server.hpp"
 #include "Connection.hpp"
-#include "Configfile.hpp"
+#include "configfile.hpp"
 #include <map>
 
 // #define MAX_CLIENT 1024
 #define MAX_FD 1024
+
 
 class WebServer 
 {

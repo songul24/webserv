@@ -22,12 +22,12 @@
 #include <sys/stat.h>
 #include <cstdio>
 #include <dirent.h>
-#include "../include/Request.hpp"
+
+#include "Request.hpp"
 class Server;
 
 #define BACKLOG 10   // how many pending connections queue will hold
 #define MAX_EVENTS  64
-// volatile sig_atomic_t g_run = 1;
 
 
 
@@ -58,13 +58,13 @@ class Connection {
                 void            parseRequest( const char *buf );
 
                 //getters
-                int             getFd();
-                int             getSentlen();
-                int             getRespLen();
-                std::string&    getResponse();
-                Server*         getServer();
-                bool            getParsed();
-                time_t          get_Lastactive();
+                int             getFd() const;
+                int             getSentlen() const;
+                int             getRespLen() const;
+                std::string    getResponse() const;
+                Server*         getServer() const;
+                bool            getParsed() const;
+                time_t          get_Lastactive() const;
                 // Need it in my request parsing 😝
                 bool            getIsThereBody( void ) const;
                 std::string     getRawRequest( void ) const;
@@ -76,6 +76,6 @@ class Connection {
                 void    setRespLen(int respLen);
                 void    setLastactive(time_t last_active);
                   // Need it in my request parsing 😝
-                void     setIsThereBody( bool t_or_f ) const;
-                void     setRawRequest( std::string raw ) const;
+                void     setIsThereBody( bool t_or_f );
+                void     setRawRequest( std::string raw );
 };
