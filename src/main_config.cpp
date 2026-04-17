@@ -1,4 +1,4 @@
-#include "configfile.hpp"
+#include "../include/Configfile.hpp"
 #include <iostream>
 
 int main(int argc, char **argv) {

@@ -22,12 +22,12 @@
 #include <sys/stat.h>
 #include <cstdio>
 #include <dirent.h>
-
+#include "../include/Request.hpp"
 class Server;
 
 #define BACKLOG 10   // how many pending connections queue will hold
 #define MAX_EVENTS  64
-volatile sig_atomic_t g_run = 1;
+// volatile sig_atomic_t g_run = 1;
 
 
 

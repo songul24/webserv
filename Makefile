@@ -1,6 +1,5 @@
 NAME = webserv
-
-SRCS = $(shell cd src && ls | grep .cpp)
+SRCS = $(wildcard src/*.cpp)
 # SRC = $(shell ls | grep '\.cpp')
 OBJS = $(SRCS:.cpp=.o)
 

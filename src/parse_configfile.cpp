@@ -1,4 +1,4 @@
-#include "configfile.hpp"
+#include "../include/Configfile.hpp"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -23,7 +23,7 @@ int Configfile::validatePort(int port) {
 }
 
 size_t Configfile::parseBodySize(const std::string& value) {
-    std::cout << "Parsing max_client_body_size: " << value << std::endl;
+    // std::cout << "Parsing max_client_body_size: " << value << std::endl;
     if (value.empty())
         throw std::runtime_error("Invalid max_client_body_size value");
 
@@ -33,7 +33,7 @@ size_t Configfile::parseBodySize(const std::string& value) {
 
     if (last == 'M' || last == 'm') {
         multiplier = 1024 * 1024;
-        digits = value.substr(0, value.size() - 1);
+        digits = value.substr(0, value.size() - 1);////////////////
     } else if (last == 'K' || last == 'k') {
         multiplier = 1024;
         digits = value.substr(0, value.size() - 1);
@@ -42,7 +42,7 @@ size_t Configfile::parseBodySize(const std::string& value) {
         digits = value.substr(0, value.size() - 1);
     }
 
-    int n = std::atoi(digits.c_str());
+    int n = std::atoi(digits.c_str());//////////////
     if (n <= 0)
         throw std::runtime_error("Invalid max_client_body_size value: " + value);
 
@@ -56,7 +56,7 @@ std::string Configfile::readFile(const std::string& filename) {
         throw std::runtime_error("Cannot open config file: " + filename);
 
     std::stringstream buffer;
-    buffer << file.rdbuf();
+    buffer << file.rdbuf();//put all the content of the file into the buffer
     return buffer.str();
 }
 

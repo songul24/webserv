@@ -15,6 +15,7 @@ bool    check_path(const std::string& url)
         }       
         return false;
 }
+std::string Delete_file(const std::string& url, const std::string& root);
 
 std::string Delete_folder(const std::string& path)
 {
