@@ -6,19 +6,19 @@
 Connection::Connection(Server* srv, int fd): _fd(fd), _server(srv)
 , _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL)){}
 
-// Connection::Connection() : _fd(-1), _server(NULL), _parsed(false),
-//                _sentLen(0), _respLen(0), _last_active(0), _is_there_body(false),
-//                _raw_request(NULL) {}
+Connection::Connection() : _fd(-1), _server(NULL), _parsed(false),
+               _sentLen(0), _respLen(0), _last_active(0), _is_there_body(false),
+               _raw_request(NULL) {}
 
 // // Connection::Connection(Connection const &other){}
-// Connection::~Connection()
-// {
-//         if(_fd != -1)
-//         {
-//                 close(_fd);
-//                 _fd = -1;
-//         }
-// }
+Connection::~Connection()
+{
+        if(_fd != -1)
+        {
+                close(_fd);
+                _fd = -1;
+        }
+}
 // // Connection& Connection::operator=(Connection const &other){}
 
 

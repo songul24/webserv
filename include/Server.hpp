@@ -11,8 +11,8 @@
 class Server 
 {
         private:
+                int                         _fd;
             std::string                 _port;
-            int                         _fd;
             std::string                 _ip;
 
             

@@ -1,5 +1,5 @@
-// #include "../include/Configfile.hpp"
-// #include <iostream>
+// #include "../include/configfile.hpp"
+
 
 // int main(int argc, char **argv) {
 //     try {
@@ -102,3 +102,25 @@
 
 //     return 0;
 // }
+
+
+
+#include "../include/WebServer.hpp"
+
+
+int     main(int argc, char **argv)
+{
+        (void)argc;
+        (void)argv;
+        try
+        {
+                WebServer myserver;
+                myserver.setupServer();
+                myserver.runServer();
+        }
+        catch(const std::exception& e)
+        {
+                std::cerr << e.what() << '\n';
+        }
+        return 0;
+}
