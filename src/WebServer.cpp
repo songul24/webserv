@@ -30,11 +30,25 @@ void    setup_signals(void)
         signal(SIGTERM, handle_signal); //kill
 }
 
-void    WebServer::setupServer()
+void    WebServer::setupServer(const std::string& configPath)
 {
         setup_signals();
-        memset(&_fd_to_server, 0, sizeof(_fd_to_server));
-        // _fd_to_server[fd] = &servers[i];
+
+        Configfile config;
+        std::string content = config.readFile(configPath);
+        std::vector<std::string> tokens = config.tokenize(content);
+        std::vector<ServerConfig> config_servers = config.parseServers(tokens);
+
+        _fd_to_server.clear();
+        _servers.reserve(config_servers.size());
+        for(size_t i = 0; i < config_servers.size(); i++)
+                _servers.push_back(Server(config_servers[i]));
+        for(size_t i = 0; i < config_servers.size(); i++)
+        {
+                if(_servers[i].setup() != 0)
+                        throw std::runtime_error("Failed to setup server in port:" + _servers[i].getPort());
+                _fd_to_server[_servers[i].getFd()] = &_servers[i];
+        }
 }
 
 
@@ -113,13 +127,14 @@ void    WebServer::handle_client_response(int fd)
 
 void    WebServer::handle_client_request(int fd)
 {
-        char buf[10000] = {0};
-        int bytes = recv(fd, buf, sizeof(buf), 0);
+        char buf[10000];
+        int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
         if(bytes <= 0)
                 close_connection(fd);
         else
         {
-                // _clients[fd].parse_request(buf);
+                buf[bytes] = '\0';
+                _clients[fd].parseRequest(buf);
                 if(_clients[fd].getParsed())
                 {
                         // execute_request(fd);
@@ -139,7 +154,8 @@ void    WebServer::check_timeout()
                 Connection &client = it->second;
                 if (difftime(time(NULL), client.get_Lastactive()) > 60)
                 {
-                        _clients.erase(it++);
+                        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                        _clients.erase(it++); 
                         std::cout << "timeout fd=" << fd << std::endl;
                 }
                 else
@@ -151,6 +167,8 @@ void    WebServer::runServer()
 {
         // Create the epoll instance
         _epoll_fd = epoll_create(1);
+        if (_epoll_fd == -1)
+                throw std::runtime_error("epoll_create failed: " + std::string(strerror(errno)));
 
         size_t j = 0;
         for(size_t i = 0; i < _servers.size(); i++)
@@ -169,14 +187,21 @@ void    WebServer::runServer()
                 int n_ready = epoll_wait(_epoll_fd, events, MAX_EVENTS, 5000);
 
                 if (n_ready < 0)
+                {
+                        if (errno == EINTR)
+                                continue; 
                         throw std::runtime_error("epoll_wait: " + std::string(strerror(errno)));
+                }
 
                 //loop over all events
                 for (int i = 0; i < n_ready; i++) 
                 {
                         int fd      = events[i].data.fd;
-                         uint32_t ev = events[i].events;
-                        Server *srv = _fd_to_server[fd];
+                        uint32_t ev = events[i].events;
+                        Server *srv = NULL;
+                        if (_fd_to_server.count(fd))
+                                srv = _fd_to_server[fd];
+
                         // ── new connection ──
                         if (srv) 
                         {

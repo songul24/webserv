@@ -22,6 +22,8 @@
 #include <sys/stat.h>
 #include <cstdio>
 #include <dirent.h>
+#include <sstream>
+
 
 #include "Request.hpp"
 class Server;

@@ -1,9 +1,10 @@
-#include "../include/configfile.hpp"
+#include "../include/WebServer.hpp"
+
 #include <fstream>
 #include <sstream>
-#include <stdexcept>
-#include <iostream>
-#include <cstdlib>
+// #include <stdexcept>
+// #include <iostream>
+// #include <cstdlib>
 
 Configfile::Configfile() {}
 Configfile::~Configfile() {}

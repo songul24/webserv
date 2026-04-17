@@ -1,32 +1,33 @@
 #pragma once
 
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <vector>
+// #include <algorithm>
+// #include <iostream>
+// #include <string>
+// #include <vector>
 
-
+#include "configfile.hpp"
 #include "Connection.hpp"
 
 class Server 
 {
         private:
-                int                         _fd;
-            std::string                 _port;
-            std::string                 _ip;
-
-            
+                ServerConfig    _config;
+                int             _fd;
+                std::string     _port;
         
-
+                
         public:
-                Server(const std::string& port, const std::string& ip, int fd);
-                // Server(Server const &other);
-	        // Server& operator=(const Server& other);
+                Server(ServerConfig config);
+                Server(Server const &other);
+                Server& operator=(const Server& other);
 		~Server();
 
-                int     getFd();
-                std::string getPort();
-                std::string getIp();
+                int     getFd() const;
+                const std::string& getPort() const;
+                const ServerConfig& getConfig() const;
+
+                void    setFd(int fd);
+                void    setConfig(const ServerConfig& config);
                 int setup();  // socket(), bind(), listen(), epoll_create()
                 
 
