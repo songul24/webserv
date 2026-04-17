@@ -1,7 +1,6 @@
 #include "../include/Server.hpp"
 
-Server::Server(const std::string& port, const std::string& ip, int fd): _port(port)
-, _fd(fd), _ip(ip){}
+Server::Server(const std::string& port, const std::string& ip, int fd): _fd(fd), _port(port), _ip(ip){}
 
 // Server::Server(Server const &other): _port(other._port), _epoll_fd(other._epoll_fd)
 // , _fd(other._fd), _clients(other._clients){}

@@ -1,5 +1,7 @@
 #include "../include/WebServer.hpp"
 
+std::string Delete_file(const std::string& url, const std::string& root);
+
 bool    check_path(const std::string& url)
 {
         if (url == "..")

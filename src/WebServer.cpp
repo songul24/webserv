@@ -1,4 +1,5 @@
 #include "../include/WebServer.hpp"
+volatile sig_atomic_t g_run = 1;
 
 WebServer::WebServer(): _epoll_fd(-2){}
 
@@ -137,7 +138,7 @@ void    WebServer::check_timeout()
                 Connection &client = it->second;
                 if (difftime(time(NULL), client.get_Lastactive()) > 60)
                 {
-                        it = _clients.erase(it++);
+                        _clients.erase(it++);
                         std::cout << "timeout fd=" << fd << std::endl;
                 }
                 else
@@ -150,7 +151,7 @@ void    WebServer::runServer()
         // Create the epoll instance
         _epoll_fd = epoll_create(1);
 
-        int j = 0;
+        size_t j = 0;
         for(size_t i = 0; i < _servers.size(); i++)
         {
                 if(add_to_epoll(_epoll_fd, _servers[i].getFd(), EPOLLIN))
