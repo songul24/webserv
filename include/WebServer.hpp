@@ -15,6 +15,8 @@ class WebServer
                 Server*                     _fd_to_server[MAX_FD];
                 std::map<int, Connection>   _clients;
                 // Configuration
+                Configfile                    _config;
+                std::vector<ServerConfig>     _server_configs;
 
         public:
                 WebServer();
