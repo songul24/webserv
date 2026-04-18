@@ -70,3 +70,16 @@ void    Connection::setRespLen(int respLen) {_respLen = respLen;}
 void    Connection::setLastactive(time_t last_active) {_last_active = last_active;}
 void    Connection::setIsThereBody( bool t_or_f ) {_is_there_body = t_or_f;}
 void    Connection::setRawRequest( std::string raw ) {_raw_request = raw;}
+
+
+// void    Connection::executMethods()
+// {
+//         // if(_request.getMethod() == "POST")
+//         //         // Post_method(*this);
+//         // else if(_request.getMethod() == "GET")
+//         //         Get_method(*this);
+//         else if(_request.getMethod() == "DELETE")
+//                 Delete_method(*this);
+//         else
+//                 return; 
+// }

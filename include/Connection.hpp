@@ -38,10 +38,12 @@ class Connection {
                 int             _fd;
                 Server*          _server;
                 bool            _parsed;
+
                 int             _sentLen;
                 std::string    _response;
                 int             _respLen;
                 time_t          _last_active;
+
                 // Need it in my request parsing 😝
                 Request         _request;
                 bool            _is_there_body;
@@ -63,7 +65,7 @@ class Connection {
                 int             getFd() const;
                 int             getSentlen() const;
                 int             getRespLen() const;
-                std::string    getResponse() const;
+                std::string     getResponse() const;
                 Server*         getServer() const;
                 bool            getParsed() const;
                 time_t          get_Lastactive() const;
@@ -80,4 +82,6 @@ class Connection {
                   // Need it in my request parsing 😝
                 void     setIsThereBody( bool t_or_f );
                 void     setRawRequest( std::string raw );
+
+                // void    executMethods();
 };
