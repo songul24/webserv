@@ -115,3 +115,71 @@ int    Server::setup()
         return 0;
 }
 
+std::string     get_rand()
+{
+        long long random_num = (long long)std::rand() + (long long)time(NULL);
+
+        std::stringstream ss;
+        ss << std::hex << random_num;
+        std::string id = ss.str();
+
+        return id;
+}
+
+std::string     Server::gen_cookie()
+{
+        std::string id;
+        id = get_rand();
+        std::map<std::string, s_cookie>::iterator it = _cookies.find(id);
+        while(it != _cookies.end())
+                id = get_rand();
+
+        s_cookie newCookie("session_id", id);
+        newCookie.attributes["Max-Age"] = "3600";
+        newCookie.attributes["Path"] = "/";
+        newCookie.attributes["HttpOnly"] = "";
+        newCookie.last_active = time(NULL);
+        _cookies[id] = newCookie;
+        std::string response = "Set-Cookie: session_id=" + id + "; HttpOnly; Max-Age=3600; Path=/\r\n";
+        return response;
+}
+
+std::string     Server::mod_cookie(const std::string& att)
+{
+        size_t pos = att.find("session_id=");
+        std::string value;
+        if (pos != std::string::npos)
+        {
+                value = att.substr(pos + 11); // skip  "session_id="
+                size_t end = value.find(";");
+                if (end != std::string::npos)
+                    value = value.substr(0, end);
+        }
+        else
+                return (gen_cookie());
+        
+        std::map<std::string, s_cookie>::iterator it = _cookies.find(value);
+        if(it != _cookies.end())
+        {
+                if(time(NULL) - it->second.last_active >= 3600)
+                {
+                        _cookies.erase(value);
+                        return ("Set-Cookie: session_id=" + value + "; Max-Age=0\r\n" + gen_cookie());
+                }
+                it->second.last_active = time(NULL);
+        }
+        else
+                return (gen_cookie());
+        return ("");
+}
+
+std::string     Server::parseCookies(const std::map<std::string, std::string>& header)
+{
+        // std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+        std::map<std::string, std::string>::const_iterator it = header.find("cookie");
+
+        if (it != header.end())
+                return (mod_cookie(it->second));
+        else 
+                return (gen_cookie());
+}

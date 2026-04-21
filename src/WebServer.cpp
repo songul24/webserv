@@ -213,7 +213,7 @@ void    WebServer::runServer()
                         if (ev & (EPOLLERR | EPOLLHUP)) 
                         {
                                 std::cout << "Error/hangup on fd="<< fd << std::endl;
-                                // remove_from_epoll(_epoll_fd, fd);
+                                epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
                                 close_connection(fd);
                                 continue;
                         }

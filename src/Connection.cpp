@@ -49,6 +49,8 @@ void    Connection::parseRequest( const char *buf )
         
         _is_there_body = true;
         _parsed = true;
+
+        _cookie = _server->parseCookies(_request.getHeaders());
 }
 
 

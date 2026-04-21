@@ -44,6 +44,8 @@ class Connection {
                 int             _respLen;
                 time_t          _last_active;
 
+                std::string     _cookie;
+
                 // Need it in my request parsing 😝
                 Request         _request;
                 bool            _is_there_body;

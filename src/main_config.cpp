@@ -14,6 +14,7 @@ int     main(int argc, char **argv)
         try {
                 WebServer myserver;
                 myserver.setupServer(configPath);
+                std::srand(std::time(NULL));
                 myserver.runServer();
         }
         catch(const std::exception& e)
