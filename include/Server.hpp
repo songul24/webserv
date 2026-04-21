@@ -16,6 +16,7 @@ struct s_cookie {
         std::map<std::string, std::string> attributes;
         time_t  last_active;
     
+        s_cookie() : name(""), id("") {}
         s_cookie(std::string n, std::string v) : name(n), id(v) {}
 };
 
