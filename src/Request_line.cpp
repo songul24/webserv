@@ -75,11 +75,36 @@ void	get_version( std::string &buffer, Request &request )
 	request.setVersion(token);
 }
 
+std::vector<std::string>	split(std::tring &s, char separator)
+{
+	std::vector<std::string>	tokens;
+	std::string					token;
+	std::istringstream			tokenStream(s);
+
+	while(std::getline(tokenStream, token, separator))
+		tokens.push_back(token);
+
+	return (tokens);
+}
+
 void	parse_request( std::string &buffer, Request &request )
 {
 	get_method(buffer, request);
 	get_path(buffer, request);		
-	get_version(buffer, request);	
+	get_version(buffer, request);
+
+	std::string		first;
+	int				i = 0;
+
+	while (buffer[i] != '\r' && buffer[i + 1] != '\n')
+	{
+		first += buffer[i];
+		i++;
+	}
+
+	std::vector<std::string>	request_line = split(first, ' ');
+
+	 
 	
 	std::cout << "Method ----> " << request.getMethod() << std::endl;
 	std::cout << "Path ----> " << request.getPath() << std::endl;
