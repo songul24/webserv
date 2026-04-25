@@ -16,15 +16,13 @@ class WebServer
                 std::vector<Server>         _servers;
                 std::map<int, Server*>      _fd_to_server;
                 std::map<int, Connection>   _clients;
-                // Configuration
-                // Configfile                    _Configuration;
-                // std::vector<ServerConfig>     _server_configs;
+
+                WebServer(WebServer const &other);
+                WebServer& operator=(const WebServer& other);
 
         public:
                 WebServer();
-                // WebServer(WebServer const &other);
-            // WebServer& operator=(const WebServer& other);
-        ~WebServer();
+                ~WebServer();
 
                 void setupServer(const std::string& configPath);
                 void runServer();
@@ -34,5 +32,15 @@ class WebServer
                 void close_connection(int fd);
                 void handle_client_response(int fd);
                 void check_timeout();
+                void execute_methods(int fd);
+   
 
 };
+
+
+
+int set_nonblock(int fd);
+int add_to_epoll(int epfd, int fd, uint32_t events);
+int mod_to_epoll(int epfd, int fd, uint32_t events);
+void Deleth_method(Connection& client);
+std::map<std::string, std::string>      setCgiEnv(Connection client);

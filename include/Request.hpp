@@ -13,7 +13,7 @@ class	Request
 		std::string							method;
 		std::string							path;
 		std::string							version;
-		std::map<std::string, std::string>	heads;
+		std::map<std::string, std::string>				heads;
 		std::string							body;
 
 	public:

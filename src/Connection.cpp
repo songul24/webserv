@@ -3,14 +3,36 @@
 #include "../include/Request_header.hpp"
 #include "../include/Request_line.hpp"
 
+
+
 Connection::Connection(Server* srv, int fd): _fd(fd), _server(srv)
-, _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL)){}
+, _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL)), _request(), _is_there_body(false), _raw_request(0){}
 
 Connection::Connection() : _fd(-1), _server(NULL), _parsed(false),
                _sentLen(0), _respLen(0), _last_active(0), _is_there_body(false),
                _raw_request(NULL) {}
 
-// // Connection::Connection(Connection const &other){}
+Connection::Connection(Connection const &other): _fd(other._fd), _server(other._server)
+, _parsed(other._parsed), _sentLen(other._sentLen),_response(other._response) , _respLen(other._respLen), _last_active(other._last_active), _request(other._request), _is_there_body(other._is_there_body), _raw_request(other._raw_request){}
+
+Connection& Connection::operator=(Connection const &other)
+{
+        if(this != &other)
+        {
+                _fd = other._fd;
+                _server = other._server;
+                _parsed = other._parsed;
+                _sentLen = other._sentLen;
+                _response = other._response;
+                _respLen = other._respLen;
+                _last_active = other._last_active;
+                _request = other._request;
+                _is_there_body = other._is_there_body;
+                _raw_request = other._raw_request;
+        }
+        return (*this);
+}
+
 Connection::~Connection()
 {
         if(_fd != -1)
@@ -19,7 +41,7 @@ Connection::~Connection()
                 _fd = -1;
         }
 }
-// // Connection& Connection::operator=(Connection const &other){}
+
 
 
 
@@ -50,38 +72,26 @@ void    Connection::parseRequest( const char *buf )
         _is_there_body = true;
         _parsed = true;
 
-        _cookie = _server->parseCookies(_request.getHeaders());
 }
 
 
-int     Connection::getFd() const {return _fd;}
-Server* Connection::getServer() const {return _server;}
-bool    Connection::getParsed() const {return _parsed;}
-int     Connection::getSentlen() const {return _sentLen;}
-int     Connection::getRespLen() const {return _respLen;}
-std::string    Connection::getResponse() const {return _response;}
+int             Connection::getFd() const {return _fd;}
+Server*         Connection::getServer() const {return _server;}
+bool            Connection::getParsed() const {return _parsed;}
+int             Connection::getSentlen() const {return _sentLen;}
+int             Connection::getRespLen() const {return _respLen;}
+std::string     Connection::getResponse() const {return _response;}
 time_t          Connection::get_Lastactive() const {return _last_active;}
 bool            Connection::getIsThereBody( void ) const {return _is_there_body;}
 std::string     Connection::getRawRequest( void ) const {return _raw_request;}
+Request         Connection::getRequest(void) const  {return _request;}
 
 
-void    Connection::setSentlen(int sentLen) {_sentLen = sentLen;}
-void    Connection::setParsed(bool paresd) {_parsed = paresd;}
-void    Connection::setResponse(const std::string& response) {_response = response;}
-void    Connection::setRespLen(int respLen) {_respLen = respLen;}
-void    Connection::setLastactive(time_t last_active) {_last_active = last_active;}
-void    Connection::setIsThereBody( bool t_or_f ) {_is_there_body = t_or_f;}
-void    Connection::setRawRequest( std::string raw ) {_raw_request = raw;}
+void            Connection::setSentlen(size_t sentLen) {_sentLen = sentLen;}
+void            Connection::setParsed(bool paresd) {_parsed = paresd;}
+void            Connection::setResponse(const std::string& response) {_response = response;}
+void            Connection::setRespLen(size_t respLen) {_respLen = respLen;}
+void            Connection::setLastactive(time_t last_active) {_last_active = last_active;}
+void            Connection::setIsThereBody( bool t_or_f ) {_is_there_body = t_or_f;}
+void            Connection::setRawRequest( std::string raw ) {_raw_request = raw;}
 
-
-// void    Connection::executMethods()
-// {
-//         // if(_request.getMethod() == "POST")
-//         //         // Post_method(*this);
-//         // else if(_request.getMethod() == "GET")
-//         //         Get_method(*this);
-//         else if(_request.getMethod() == "DELETE")
-//                 Delete_method(*this);
-//         else
-//                 return; 
-// }

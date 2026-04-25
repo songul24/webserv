@@ -1,16 +1,26 @@
 #include "../include/WebServer.hpp"
+
+
+
 volatile sig_atomic_t g_run = 1;
 
 WebServer::WebServer(): _epoll_fd(-2){}
 
-// // WebServer::WebServer(WebServer const &other){}
+WebServer::WebServer(WebServer const &other) :_epoll_fd(other._epoll_fd), _servers(other._servers), _fd_to_server(other._fd_to_server), _clients(other._clients){}
 
-// // WebServer& WebServer::operator=(const WebServer& other){}
-
+WebServer& WebServer::operator=(const WebServer& other)
+{
+        if(this != &other)
+        {
+                _epoll_fd = other._epoll_fd;
+                _servers = other._servers;
+                _clients = other._clients;
+                _fd_to_server = other._fd_to_server;
+        }
+        return *this;
+}
 WebServer::~WebServer()
 {
-        // if(_listen_fd != -1)
-        //         close(_listen_fd);
         if(_epoll_fd != -2)
                 close(_epoll_fd);
 }
@@ -52,25 +62,7 @@ void    WebServer::setupServer(const std::string& configPath)
 }
 
 
-int    add_to_epoll(int epfd, int fd, uint32_t events)
-{
-        epoll_event ev;
-        ev.events  = events;
-        ev.data.fd = fd;
-        if(epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
-                return (print_errno("epoll_ctl ADD", true), 1);
-        return 0;
-}
 
-int    mod_to_epoll(int epfd, int fd, uint32_t events)
-{
-        epoll_event ev;
-        ev.events  = events;
-        ev.data.fd = fd;
-        if(epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev) == -1)
-                return (print_errno("epoll_ctl MOD", true), 1);
-        return 0;
-}
 
 void    WebServer::handle_new_connection(Server *srv)
 {
@@ -125,6 +117,24 @@ void    WebServer::handle_client_response(int fd)
         }
 }
 
+
+void    WebServer::execute_methods(int fd)
+{
+        std::map<std::string, std::string> header = _clients[fd].getRequest().getHeaders();
+
+        std::map<std::string, std::string> env = setCgiEnv(_clients[fd]);
+
+        std::string method = _clients[fd].getRequest().getMethod();
+        
+        if(method == "DELETE")
+                Deleth_method(_clients[fd]);
+        // else if(method == "POST")
+        //         Post_method(_clients[fd], env);
+        // else if(method == "GET")
+        //         Get_method(_clients[fd], env);
+        
+}
+
 void    WebServer::handle_client_request(int fd)
 {
         char buf[10000];
@@ -137,7 +147,7 @@ void    WebServer::handle_client_request(int fd)
                 _clients[fd].parseRequest(buf);
                 if(_clients[fd].getParsed())
                 {
-                        // execute_request(fd);
+                        execute_methods(fd);
                         handle_client_response(fd);
                 }
         }

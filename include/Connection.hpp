@@ -35,30 +35,29 @@ class Server;
 
 class Connection {
         private:
-                int             _fd;
-                Server*          _server;
-                bool            _parsed;
+                int                     _fd;
+                Server*                 _server;
+                bool                    _parsed;
 
-                int             _sentLen;
-                std::string    _response;
-                int             _respLen;
-                time_t          _last_active;
-
-                std::string     _cookie;
+                size_t                  _sentLen;
+                std::string             _response;
+                size_t                  _respLen;
+                time_t                  _last_active;
 
                 // Need it in my request parsing 😝
                 Request         _request;
                 bool            _is_there_body;
                 std::string     _raw_request;
 
-
-
+                
+                
+                
         public:
                 Connection(Server* srv, int fd);
                 Connection();
-		// Connection(Connection const &other);
+                Connection(Connection const &other);
+		Connection & operator=(Connection const &other);
 		~Connection();
-		// Connection & operator=(Connection const &other);
                 
                 // The parse request method :)
                 void            parseRequest( const char *buf );
@@ -74,16 +73,19 @@ class Connection {
                 // Need it in my request parsing 😝
                 bool            getIsThereBody( void ) const;
                 std::string     getRawRequest( void ) const;
+                Request         getRequest(void) const;
 
                 //setters
-                void    setSentlen(int sentLen);
+                void    setSentlen(size_t sentLen);
                 void    setParsed(bool paresd);
                 void    setResponse(const std::string& response);
-                void    setRespLen(int respLen);
+                void    setRespLen(size_t respLen);
                 void    setLastactive(time_t last_active);
                   // Need it in my request parsing 😝
                 void     setIsThereBody( bool t_or_f );
                 void     setRawRequest( std::string raw );
 
-                // void    executMethods();
 };
+
+
+
