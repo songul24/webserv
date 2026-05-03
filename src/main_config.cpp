@@ -102,3 +102,52 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
+
+
+// #include "../include/Configfile.hpp"
+// #include <iostream>
+
+// int main(int argc, char **argv)
+// {
+//      (void)argc;  // Indique que le paramètre n'est pas utilisé
+//     (void)argv;
+//     Configfile parser;
+//     std::string content = parser.readFile("config.conf");
+//     std::vector<std::string> tokens = parser.tokenize(content);
+//     std::vector<ServerConfig> servers = parser.parseServers(tokens);
+    
+//     if (!servers.empty())
+//     {
+//         ServerConfig config = servers[0];
+        
+//         // Vérifier les CGI handlers
+//         std::cout << "\n=== TEST CGI MULTIPLE ===\n";
+//         std::cout << "CGI handlers found: " << config.cgi.size() << std::endl;
+        
+//         for (std::map<std::string, std::string>::iterator it = config.cgi.begin();
+//              it != config.cgi.end(); ++it)
+//         {
+//             std::cout << "  Extension: " << it->first 
+//                       << " -> " << it->second << std::endl;
+//         }
+        
+//         // Vérifier les CGI dans les locations
+//         for (size_t i = 0; i < config.locations.size(); i++)
+//         {
+//             if (!config.locations[i].cgi.empty())
+//             {
+//                 std::cout << "\nLocation " << config.locations[i].path 
+//                           << " CGI handlers:" << std::endl;
+//                 for (std::map<std::string, std::string>::iterator it = config.locations[i].cgi.begin();
+//                      it != config.locations[i].cgi.end(); ++it)
+//                 {
+//                     std::cout << "  " << it->first << " -> " << it->second << std::endl;
+//                 }
+//             }
+//         }
+//     }
+    
+//     return 0;
+// }
+

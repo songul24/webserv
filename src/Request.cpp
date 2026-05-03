@@ -12,6 +12,10 @@ Request	&Request::operator=( const Request &old )
 		method = old.method;
 		path = old.path;
 		version = old.version;
+
+		//needed
+		heads = old.heads;
+		body = old.body;
 	}
 	return (*this);
 }

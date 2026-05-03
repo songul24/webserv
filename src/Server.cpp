@@ -1,22 +1,27 @@
 #include "../include/Server.hpp"
 
-Server::Server(const std::string& port, const std::string& ip, int fd): _port(port)
-, _fd(fd), _ip(ip){}
 
-// Server::Server(Server const &other): _port(other._port), _epoll_fd(other._epoll_fd)
-// , _fd(other._fd), _clients(other._clients){}
+Server::Server(ServerConfig config)
+: _config(config), _fd(-1), _port("")
+{
+        std::ostringstream oss;
+        oss << _config.port;
+        _port = oss.str();
+}
 
-// Server& Server::operator=(const Server& other)
-// {
-//         if(this != &other)
-//         {
-//                 _port = other._port;
-//                 _epoll_fd = other._epoll_fd;
-//                 _fd = other._fd;
-//                 _clients = other._clients;
-//         }
-//         return *this;
-// }
+Server::Server(Server const &other)
+: _config(other._config), _fd(other._fd), _port(other._port){}
+
+Server& Server::operator=(const Server& other)
+{
+        if(this != &other)
+        {
+                _config = other._config;
+                _fd = other._fd;
+                _port = other._port;
+        }
+        return *this;
+}
 
 Server::~Server()
 {
@@ -24,34 +29,20 @@ Server::~Server()
                 close(_fd);
 }
 
-int     Server::getFd(){return (_fd);}
-std::string Server::getPort(){return (_port);}
-std::string Server::getIp(){return (_ip);}
+
+int                     Server::getFd() const{return (_fd);}
+const std::string&      Server::getPort() const {return _port;}
+const ServerConfig&     Server::getConfig() const {return (_config);}
+
+void                    Server::setFd(int fd){_fd = fd;}
+void                    Server::setConfig(const ServerConfig& config){_config = config;}
 
 
-void    print_errno(const std::string& str, bool flag)
-{
-        int err = errno;
-        if (flag && err != 0)
-            std::cerr << str << ": " << strerror(err) << std::endl;
-        else
-            std::cerr << "Error: " << str << std::endl;
-}
-int    set_nonblock(int fd)
-{
-        //first for saving old flags
-        int flag = fcntl(fd, F_GETFL, 0);
-        if(flag == -1)
-                return (print_errno("fcntl F_GETFL", true), 1);
-        //we add nonblock flag to old flags
-        if(fcntl(fd, F_SETFL, flag | O_NONBLOCK) == -1)
-                return (print_errno("fcntl F_SETFL", true), 1);
-        return 0;
-}
+
 
 int    Server::setup()
 {
-        addrinfo setup = addrinfo();
+        addrinfo setup;
         addrinfo *res = NULL;
         addrinfo *p;
 
@@ -61,7 +52,7 @@ int    Server::setup()
         setup.ai_flags = AI_PASSIVE;            //use my ip
         setup.ai_protocol = IPPROTO_TCP;
 
-        int status = getaddrinfo(_ip.c_str(), _port.c_str(), &setup, &res);
+        int status = getaddrinfo(_config.ip.c_str(), _port.c_str(), &setup, &res);
         if(status != 0)
             return (print_errno(gai_strerror(status), false), 1);
 
@@ -97,9 +88,10 @@ int    Server::setup()
 		}
 	        break;
         }
-        freeaddrinfo(res); // all done with this structure
+
+        freeaddrinfo(res); 
 	if (p == NULL || _fd == -1)
-                throw std::runtime_error("Server failed to bind to " + _ip + ":" + _port);
+                throw std::runtime_error("Server failed to bind to in port:" + _port);
         if (listen(_fd, BACKLOG) == -1)
         {
                 print_errno("listen failed", true);
@@ -108,4 +100,3 @@ int    Server::setup()
 	}
         return 0;
 }
-
