@@ -2,6 +2,7 @@
 #include "../include/Server.hpp"
 #include "../include/Request_header.hpp"
 #include "../include/Request_line.hpp"
+#include "../include/configfile.hpp"
 
 Connection::Connection(Server* srv, int fd): _fd(fd), _server(srv)
 , _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL)){}
@@ -26,6 +27,8 @@ Connection::~Connection()
 // The parse request method :)
 void    Connection::parseRequest( const char *buf )
 {
+        Configfile      config;
+
         _raw_request += buf;
 
         if (_raw_request.find("\r\n\r\n") == std::string::npos)
@@ -40,6 +43,8 @@ void    Connection::parseRequest( const char *buf )
                 size_t  body_len = std::atoi(content_length.c_str());
                 size_t  header_end = _raw_request.find("\r\n\r\n") + 4;
                 size_t  content_received = _raw_request.size() - header_end;
+
+                if (body_len > config.)
 
                 if (body_len > content_received)
                         return ;

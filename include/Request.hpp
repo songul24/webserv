@@ -1,4 +1,5 @@
-#pragma once
+# ifndef REQUEST_HPP
+# define REQUEST_HPP
 
 #include <iostream>
 #include <string>
@@ -14,8 +15,10 @@ class	Request
 		std::string							method;
 		std::string							path;
 		std::string							version;
+		std::string							query;
 		std::map<std::string, std::string>	heads;
-		std::string							body;
+		size_t								body_size;
+		bool								stop; // if true stop !
 
 	public:
 		Request( void );
@@ -25,16 +28,20 @@ class	Request
 		void	setMethod( std::string m );
 		void	setPath( std::string p );
 		void	setVersion( std::string v );
+		void	setQuery( std::string q );
 		void	setHeaders( std::map<std::string, std::string> h );
-		void	setBody( std::string b );
+		void	setStop( bool s );
 
 		std::string							getMethod( void ) const;
 		std::string							getPath( void ) const;
 		std::string							getVersion( void ) const;
+		std::string							getQuery( void ) const;
 		std::map<std::string, std::string>	getHeaders( void ) const;
-		std::string							getBod( void ) const;
+		bool								getStop( void ) const;
 
 		void	print_heads( void );
 		~Request( void );
 
 };
+
+# endif

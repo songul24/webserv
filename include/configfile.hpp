@@ -52,9 +52,9 @@ public:
     std::vector<ServerConfig> parseServers(std::vector<std::string>& tokens);
     LocationConfig parseLocation(std::vector<std::string>& tokens, size_t& i);
     std::pair<std::string, int> parseListen(const std::string& listenValue);
+    size_t parseBodySize(const std::string& value);
 
 private:
-    size_t parseBodySize(const std::string& value);
     bool isValidMethod(const std::string& method);
     int validatePort(int port);
 };
