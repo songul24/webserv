@@ -3,7 +3,7 @@
 #include "Server.hpp"
 #include "Connection.hpp"
 #include "configfile.hpp"
-#include "request.hpp"
+#include "Request.hpp"
 #include <map>
 
 // #define MAX_CLIENT 1024
