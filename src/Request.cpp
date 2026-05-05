@@ -1,10 +1,10 @@
 #include "Request.hpp"
 
-Request::Request( void )
+Request::Request( void ) : method(""), path(""), version(""), query(""), heads(), max_body_size(0), stop(false)
 {}
 
 Request::Request( const Request &old ) : method(old.method), path(old.path), version(old.version), 
-										query(old.query), heads(old.heads), stop(old.stop)
+										query(old.query), heads(old.heads), max_body_size(old.max_body_size), stop(old.stop)
 {}
 
 Request	&Request::operator=( const Request &old )
@@ -15,6 +15,7 @@ Request	&Request::operator=( const Request &old )
 		path = old.path;
 		version = old.version;
 		heads = old.heads;
+		max_body_size = old.max_body_size;
 		stop = old.stop;
 	}
 	return (*this);
@@ -47,6 +48,11 @@ void	Request::setHeaders( std::map<std::string, std::string> h )
 	heads = h;
 }
 
+void	Request::setMaxBodySize( size_t m_b_s )
+{
+	max_body_size = m_b_s;
+}
+
 void	Request::setStop( bool s )
 {
 	stop = s;
@@ -77,6 +83,11 @@ std::string	Request::getQuery( void ) const
 std::map<std::string, std::string>	Request::getHeaders( void ) const
 {
 	return (heads);
+}
+
+size_t								Request::getMaxBodySize( void ) const
+{
+	return (max_body_size);
 }
 
 bool								Request::getStop( void ) const
