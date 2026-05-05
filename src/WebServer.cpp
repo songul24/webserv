@@ -130,8 +130,8 @@ void    WebServer::execute_methods(int fd)
                 Deleth_method(_clients[fd]);
         // else if(method == "POST")
         //         Post_method(_clients[fd], env);
-        // else if(method == "GET")
-        //         Get_method(_clients[fd], env);
+        else if(method == "GET")
+                Get_method(_clients[fd], env);
         
 }
 

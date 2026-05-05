@@ -6,6 +6,19 @@
 #include <map>
 #include <fstream>
 #include <sstream>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <algorithm>
+#include <ctime>
+#include <cstdlib>
+#include <stdlib.h>
+#include <string.h>
+#include <iostream>
+#include <sys/wait.h>    // ← AJOUTER pour waitpid
+
+#include <cerrno>
+
 
 struct LocationConfig {
     std::string path;
@@ -53,10 +66,12 @@ public:
     LocationConfig parseLocation(std::vector<std::string>& tokens, size_t& i);
     std::pair<std::string, int> parseListen(const std::string& listenValue);
 
-private:
     size_t parseBodySize(const std::string& value);
     bool isValidMethod(const std::string& method);
     int validatePort(int port);
+    void validateServerConflicts(
+    const ServerConfig& newServer,
+    const std::vector<ServerConfig>& servers);
 };
 
 #endif

@@ -3,7 +3,7 @@
 #include "Server.hpp"
 #include "Connection.hpp"
 #include "configfile.hpp"
-#include <map>
+#include "Request.hpp"
 
 // #define MAX_CLIENT 1024
 #define MAX_FD 1024
@@ -44,3 +44,8 @@ int add_to_epoll(int epfd, int fd, uint32_t events);
 int mod_to_epoll(int epfd, int fd, uint32_t events);
 void Deleth_method(Connection& client);
 std::map<std::string, std::string>      setCgiEnv(Connection client);
+
+char    **map_to_env(const std::map<std::string, std::string>& env);
+void    free_env(char **env);
+void Get_method(Connection &client, const std::map<std::string, std::string>& env);
+

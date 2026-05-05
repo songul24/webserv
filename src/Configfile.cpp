@@ -1,15 +1,12 @@
-#include "../include/WebServer.hpp"
-
-#include <fstream>
-#include <sstream>
-// #include <stdexcept>
-// #include <iostream>
-// #include <cstdlib>
+#include "../include/configfile.hpp"
 
 Configfile::Configfile() {}
 Configfile::~Configfile() {}
 
-
+void configError(const std::string& message) {
+    std::cerr << "Configuration error: " << message << std::endl;
+    std::exit(1);
+}
 bool Configfile::isValidMethod(const std::string& method) {
     return (method == "GET" || method == "POST" || method == "DELETE");
 }
@@ -18,15 +15,14 @@ int Configfile::validatePort(int port) {
     if (port <= 0 || port > 65535) {
         std::ostringstream oss;
         oss << port;
-        throw std::runtime_error("Invalid port number: " + oss.str());
+        configError("Invalid port number: " + oss.str());
     }
     return port;
 }
 
 size_t Configfile::parseBodySize(const std::string& value) {
-    // std::cout << "Parsing max_client_body_size: " << value << std::endl;
     if (value.empty())
-        throw std::runtime_error("Invalid max_client_body_size value");
+        configError("Invalid max_client_body_size value");
 
     std::string digits = value;
     size_t multiplier = 1;
@@ -34,7 +30,7 @@ size_t Configfile::parseBodySize(const std::string& value) {
 
     if (last == 'M' || last == 'm') {
         multiplier = 1024 * 1024;
-        digits = value.substr(0, value.size() - 1);////////////////
+        digits = value.substr(0, value.size() - 1);
     } else if (last == 'K' || last == 'k') {
         multiplier = 1024;
         digits = value.substr(0, value.size() - 1);
@@ -42,25 +38,25 @@ size_t Configfile::parseBodySize(const std::string& value) {
         multiplier = 1024 * 1024 * 1024;
         digits = value.substr(0, value.size() - 1);
     }
-
-    int n = std::atoi(digits.c_str());//////////////
+    for(size_t i = 0; i < digits.size(); i++) {
+        if (!isdigit(digits[i]))
+            configError("Invalid max_client_body_size value: " + value);
+    }
+    int n = std::atoi(digits.c_str());
     if (n <= 0)
-        throw std::runtime_error("Invalid max_client_body_size value: " + value);
-
+        configError("Invalid max_client_body_size value: " + value);
     return (size_t)n * multiplier;
 }
-
 
 std::string Configfile::readFile(const std::string& filename) {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
-        throw std::runtime_error("Cannot open config file: " + filename);
+        configError("Cannot open config file: " + filename);
 
     std::stringstream buffer;
-    buffer << file.rdbuf();//put all the content of the file into the buffer
+    buffer << file.rdbuf();
     return buffer.str();
 }
-
 
 std::vector<std::string> Configfile::tokenize(const std::string& content) {
     std::vector<std::string> tokens;
@@ -69,8 +65,6 @@ std::vector<std::string> Configfile::tokenize(const std::string& content) {
 
     for (size_t i = 0; i < content.size(); i++) {
         char c = content[i];
-
-        // Handle comments (# until end of line)
         if (c == '#') {
             inComment = true;
         }
@@ -98,7 +92,6 @@ std::vector<std::string> Configfile::tokenize(const std::string& content) {
 
     if (!current.empty())
         tokens.push_back(current);
-
     return tokens;
 }
 
@@ -106,137 +99,163 @@ std::vector<std::string> Configfile::tokenize(const std::string& content) {
 std::pair<std::string, int> Configfile::parseListen(const std::string& listenValue) {
     std::pair<std::string, int> result;
     size_t colonPos = listenValue.find(':');
-
     if (colonPos != std::string::npos) {
         result.first = listenValue.substr(0, colonPos);
+        if (result.first != "0.0.0.0" && result.first != "localhost") {
+        std::istringstream ss(result.first);
+        std::string segment;
+        int count = 0;
+        bool valid = true;
+        while (std::getline(ss, segment, '.')) {
+            count++;
+
+            if (segment.empty())
+                valid = false;
+
+            int num = std::atoi(segment.c_str());
+            if (num < 0 || num > 255)
+                valid = false;
+        }
+
+        if (!valid || count != 4) {
+            configError("Invalid IP address: " + result.first);
+        }
+    }
         int port = std::atoi(listenValue.substr(colonPos + 1).c_str());
         result.second = validatePort(port);
     } else {
-        result.first = "0.0.0.0"; // bind sur toutes les interfaces par défaut
+        result.first = "0.0.0.0";
         int port = std::atoi(listenValue.c_str());
         result.second = validatePort(port);
     }
-
     return result;
 }
-
 
 LocationConfig Configfile::parseLocation(std::vector<std::string>& tokens, size_t& i) {
     LocationConfig loc;
 
-    i++; // skip "location"
-
+    i++;
     if (i < tokens.size() && tokens[i] != "{")
         loc.path = tokens[i++];
     else
         loc.path = "/";
 
     if (i >= tokens.size() || tokens[i] != "{")
-        throw std::runtime_error("Expected '{' after location path");
-
-    i++; // skip "{"
-
+        configError("Expected '{' after location path");
+    i++;
     while (i < tokens.size() && tokens[i] != "}") {
-
-        
+        if (tokens[i] == "location")
+            configError("Nested locations are not allowed");
         if (tokens[i] == "root") {
             i++;
             if (i >= tokens.size())
-                throw std::runtime_error("Invalid root in location");
+                configError("Invalid root in location");
             loc.root = tokens[i++];
-            if (i >= tokens.size() || tokens[i++] != ";")
-                throw std::runtime_error("Missing ; after root in location");
+            if (i >= tokens.size() || tokens[i] != ";")
+                configError("Missing ; after root in location");
+            i++;
         }
-
-        
         else if (tokens[i] == "index") {
             i++;
             loc.index.clear();
             while (i < tokens.size() && tokens[i] != ";")
                 loc.index.push_back(tokens[i++]);
             if (i >= tokens.size())
-                throw std::runtime_error("Missing ; after index in location");
-            i++; // skip ;
+                configError("Missing ; after index in location");
+            i++;
         }
-
-        
         else if (tokens[i] == "allow") {
             i++;
             loc.methods.clear();
             while (i < tokens.size() && tokens[i] != ";") {
                 std::string method = tokens[i++];
                 if (!isValidMethod(method))
-                    throw std::runtime_error("Invalid HTTP method in location: " + method);
+                    configError("Invalid HTTP method in location: " + method);
                 loc.methods.push_back(method);
             }
             if (i >= tokens.size())
-                throw std::runtime_error("Missing ; after allow in location");
-            i++; // skip ;
+                configError("Missing ; after allow in location");
+            i++;
         }
-
-        
         else if (tokens[i] == "upload") {
             i++;
             if (i >= tokens.size())
-                throw std::runtime_error("Invalid upload in location");
+                configError("Invalid upload directive in location");
             loc.upload = tokens[i++];
-            if (i >= tokens.size() || tokens[i++] != ";")
-                throw std::runtime_error("Missing ; after upload in location");
+            if (i >= tokens.size() || tokens[i] != ";")
+                configError("Missing ; after upload in location");
+            i++;
         }
-
-        
         else if (tokens[i] == "autoindex") {
             i++;
             if (i >= tokens.size())
-                throw std::runtime_error("Invalid autoindex in location");
+                configError("Invalid autoindex in location");
             std::string val = tokens[i++];
             if (val != "on" && val != "off")
-                throw std::runtime_error("autoindex must be 'on' or 'off'");
-            loc.autoindex = (val == "on");
-            if (i >= tokens.size() || tokens[i++] != ";")
-                throw std::runtime_error("Missing ; after autoindex in location");
+                configError("autoindex must be 'on' or 'off'");
+            if (val == "on")
+                loc.autoindex = true;
+            else if (val == "off")
+                loc.autoindex = false;
+            else
+                configError("autoindex must be 'on' or 'off'");
+            if (i >= tokens.size() || tokens[i] != ";")
+                configError("Missing ; after autoindex in location");
+            i++;
         }
-
-        
         else if (tokens[i] == "redirect") {
             i++;
             if (i + 1 >= tokens.size())
-                throw std::runtime_error("Invalid redirect directive in location");
+                configError("Invalid redirect directive in location");
             loc.redirect_code = std::atoi(tokens[i++].c_str());
             if (loc.redirect_code != 301 && loc.redirect_code != 302 &&
                 loc.redirect_code != 303 && loc.redirect_code != 307 &&
                 loc.redirect_code != 308)
-                throw std::runtime_error("Invalid redirect code");
+                configError("Invalid redirect code");
             loc.redirect = tokens[i++];
-            if (i >= tokens.size() || tokens[i++] != ";")
-                throw std::runtime_error("Missing ; after redirect in location");
+            if (i >= tokens.size() || tokens[i] != ";")
+                configError("Missing ; after redirect in location");
+            i++;
         }
-
-        
         else if (tokens[i] == "cgi") {
             i++;
             if (i + 1 >= tokens.size())
-                throw std::runtime_error("Invalid cgi directive in location");
+                configError("Invalid cgi directive in location");
             std::string extension = tokens[i++];
             std::string path = tokens[i++];
             loc.cgi[extension] = path;
-            if (i >= tokens.size() || tokens[i++] != ";")
-                throw std::runtime_error("Missing ; after cgi in location");
+            if (i >= tokens.size() || tokens[i] != ";")
+                configError("Missing ; after cgi in location");
+            i++;
         }
-
-        
         else {
             std::cerr << "Warning: Unknown directive in location: " << tokens[i] << std::endl;
-            while (i < tokens.size() && tokens[i] != ";") i++;
-            if (i < tokens.size()) i++;
+            while (i < tokens.size() && tokens[i] != ";") i++;//ignore until ;
+            if (i < tokens.size()) i++;//skip ; for unknown directive 
         }
     }
-
     if (i >= tokens.size() || tokens[i] != "}")
-        throw std::runtime_error("Missing closing '}' for location");
-
-    i++; // skip "}"
+        configError("Expected '}' at end of location block");
+    i++;
     return loc;
+}
+
+void Configfile::validateServerConflicts(
+    const ServerConfig& newServer,
+    const std::vector<ServerConfig>& servers)
+{
+    for (size_t i = 0; i < servers.size(); i++)
+    {
+        if (servers[i].ip == newServer.ip &&
+            servers[i].port == newServer.port)
+        {
+            std::ostringstream oss;
+            oss << "Duplicate server on same IP and port: "
+                << newServer.ip << ":" << newServer.port;
+
+            configError(oss.str());
+        }
+    }
 }
 
 
@@ -250,175 +269,171 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
             i++;
             continue;
         }
-
-        i++; // skip "server"
-
+        i++;
         if (i >= tokens.size() || tokens[i] != "{")
-            throw std::runtime_error("Expected '{' after server");
-
-        i++; // skip "{"
-
+            configError("Expected '{' after server");
+        i++;
         ServerConfig server;
-
         while (i < tokens.size() && tokens[i] != "}") {
-
-           
             if (tokens[i] == "listen") {
                 i++;
                 if (i >= tokens.size())
-                    throw std::runtime_error("Invalid listen directive");
-
+                    configError("Invalid listen directive");
                 std::string listenValue = tokens[i++];
                 std::pair<std::string, int> listenPair = parseListen(listenValue);
+                for (size_t k = 0; k < server.listens.size(); k++) {
+                    if (server.listens[k] == listenPair) {
+                        configError("Duplicate listen directive: " + listenValue);
+                    }
+                }
                 server.listens.push_back(listenPair);
-
-                
                 if (server.listens.size() == 1) {
                     server.ip = listenPair.first;
                     server.port = listenPair.second;
                 }
-
-                if (i >= tokens.size() || tokens[i++] != ";")
-                    throw std::runtime_error("Missing ; after listen");
+                if (i >= tokens.size() || tokens[i] != ";")
+                    configError("Missing ; after listen");
+                i++;
             }
-
-            
             else if (tokens[i] == "server_name") {
                 i++;
                 server.server_names.clear();
                 while (i < tokens.size() && tokens[i] != ";")
                     server.server_names.push_back(tokens[i++]);
                 if (i >= tokens.size())
-                    throw std::runtime_error("Missing ; after server_name");
+                    configError("Missing ; after server_name");
                 i++; 
             }
-
-           
             else if (tokens[i] == "root") {
                 i++;
                 if (i >= tokens.size())
-                    throw std::runtime_error("Invalid root");
+                    configError("Invalid root");
                 server.root = tokens[i++];
-                if (i >= tokens.size() || tokens[i++] != ";")
-                    throw std::runtime_error("Missing ; after root");
+                if (i >= tokens.size() || tokens[i] != ";")
+                    configError("Missing ; after root");
+                i++;
             }
-
-            
             else if (tokens[i] == "index") {
                 i++;
                 server.index.clear();
                 while (i < tokens.size() && tokens[i] != ";")
                     server.index.push_back(tokens[i++]);
                 if (i >= tokens.size())
-                    throw std::runtime_error("Missing ; after index");
+                    configError("Missing ; after index");
                 i++; // skip ;
-            }
-
-            
+            }   
             else if (tokens[i] == "max_client_body_size") {
                 i++;
                 if (i >= tokens.size())
-                    throw std::runtime_error("Invalid max_client_body_size");
+                    configError("Invalid max_client_body_size");
                 server.max_body_size = parseBodySize(tokens[i++]);
-                if (i >= tokens.size() || tokens[i++] != ";")
-                    throw std::runtime_error("Missing ; after max_client_body_size");
+                if (i >= tokens.size() || tokens[i] != ";")
+                    configError("Missing ; after max_client_body_size");
+                i++; // skip ;
             }
-
-           
             else if (tokens[i] == "allow") {
                 i++;
                 server.methods.clear();
                 while (i < tokens.size() && tokens[i] != ";") {
                     std::string method = tokens[i++];
                     if (!isValidMethod(method))
-                        throw std::runtime_error("Invalid HTTP method: " + method);
+                        configError("Invalid HTTP method: " + method);
                     server.methods.push_back(method);
                 }
                 if (i >= tokens.size())
-                    throw std::runtime_error("Missing ; after allow");
-                i++; // skip ;
+                    configError("Missing ; after allow");
+                i++;
             }
-
-           
             else if (tokens[i] == "autoindex") {
                 i++;
                 if (i >= tokens.size())
-                    throw std::runtime_error("Invalid autoindex");
+                    configError("Invalid autoindex");
                 std::string val = tokens[i++];
                 if (val != "on" && val != "off")
-                    throw std::runtime_error("autoindex must be 'on' or 'off'");
+                    configError("autoindex must be 'on' or 'off'");
                 server.autoindex = (val == "on");
-                if (i >= tokens.size() || tokens[i++] != ";")
-                    throw std::runtime_error("Missing ;");
+                if (i >= tokens.size() || tokens[i] != ";")
+                    configError("Missing ; after autoindex");
+                i++;
             }
-
-            
             else if (tokens[i] == "error_page") {
                 i++;
                 std::vector<int> codes;
+                std::string path;
                 while (i < tokens.size() && tokens[i] != ";") {
                     int n = std::atoi(tokens[i].c_str());
                     if (n >= 400 && n < 600) {
                         codes.push_back(n);
                         i++;
                     } else {
-                       
-                        std::string path = tokens[i++];
-                        for (size_t k = 0; k < codes.size(); k++)
-                            server.error_pages[codes[k]] = path;
-                        codes.clear();
+                        if (codes.empty()) {
+                            configError("Invalid error_page directive: no error codes before path");
+                        }
+                        path = tokens[i];
+                        i++;
+                        break;
                     }
                 }
-                if (i >= tokens.size())
-                    throw std::runtime_error("Missing ; after error_page");
-                i++; 
-            }
+                if (path.empty()) {
+                    configError("Missing path for error_page directive");
+                }
+                if (i >= tokens.size() || tokens[i] != ";") {
+                    configError("Missing ; after error_page");
+                }
+                for (size_t k = 0; k < codes.size(); k++) {
+                    server.error_pages[codes[k]] = path;
+                }
 
-           
+                i++;
+            }
             else if (tokens[i] == "upload") {
                 i++;
                 if (i >= tokens.size())
-                    throw std::runtime_error("Invalid upload");
+                    configError("Invalid upload");
                 server.upload = tokens[i++];
-                if (i >= tokens.size() || tokens[i++] != ";")
-                    throw std::runtime_error("Missing ; after upload");
+                if (i >= tokens.size() || tokens[i] != ";")
+                    configError("Missing ; after upload");
+                i++;
             }
-
-            
             else if (tokens[i] == "cgi") {
                 i++;
                 if (i + 1 >= tokens.size())
-                    throw std::runtime_error("Invalid cgi directive");
+                    configError("Invalid cgi directive in server block");
                 std::string extension = tokens[i++];
                 std::string path = tokens[i++];
                 server.cgi[extension] = path;
-                if (i >= tokens.size() || tokens[i++] != ";")
-                    throw std::runtime_error("Missing ; after cgi");
+                if (i >= tokens.size() || tokens[i] != ";")
+                    configError("Missing ; after cgi in server block");
+                i++;
             }
-
             else if (tokens[i] == "location") {
-                server.locations.push_back(parseLocation(tokens, i));
+                LocationConfig loc = parseLocation(tokens, i);
+                for(size_t k = 0; k < server.locations.size(); k++) {
+                    if (server.locations[k].path == loc.path) {
+                        configError("Duplicate location path: " + loc.path);
+                    }
+                }
+                server.locations.push_back(loc);
             }
-
             else {
                 std::cerr << "Warning: Unknown directive: " << tokens[i] << std::endl;
                 while (i < tokens.size() && tokens[i] != ";") i++;
                 if (i < tokens.size()) i++;
             }
         }
-
         if (i >= tokens.size() || tokens[i] != "}")
-            throw std::runtime_error("Missing closing '}' for server");
+                configError("Missing closing '}' for server block");
 
         if (server.listens.empty())
-            throw std::runtime_error("Server block has no listen directive");
-
-        i++; 
+            configError("Server block has no listen directive");
+        if (server.index.empty())
+            configError("Server block must have at least one index file specified");
+        i++;
+        validateServerConflicts(server, servers);
         servers.push_back(server);
     }
-
     if (servers.empty())
-        throw std::runtime_error("No server block found in config file");
+        configError("No server blocks found in configuration");
 
     return servers;
 }
