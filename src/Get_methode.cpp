@@ -280,6 +280,26 @@ std::string handleGET(const Request &req, const ServerConfig &srv,
     }
     return buildResponse(200, readFile(path), mimeType(path));
 }
+void    send_get_response(Connection& client, const std::string& status)
+{
+        std::string body;
+        if (status != "204 No Content")
+                body = "<html><body><h1>" + status + "</h1></body></html>";
+
+        std::string resp = "HTTP/1.0 " + status + "\r\n";
+        std::ostringstream oss;
+        oss << body.size();
+        resp += "Content-Length: " + oss.str() + "\r\n";
+        if (!body.empty())
+                resp += "Content-Type: text/html\r\n";
+        resp += "\r\n";
+        resp += body;
+
+        client.setResponse(resp);
+        client.setRespLen(resp.size());
+        client.setSentlen(0);
+}
+
 void Get_method(Connection &client, const std::map<std::string, std::string>& env)
 {
     //Récupérer la requête
@@ -288,8 +308,10 @@ void Get_method(Connection &client, const std::map<std::string, std::string>& en
     ServerConfig config = client.getServer()->getConfig();
     std::string response = handleGET(req, config, env);
     //Envoyer la réponse au client
-    send(client.getFd(), response.c_str(), response.size(), 0);
+    
+    send_get_response(client, response);
     
     //Fermer la connexion (HTTP/1.0)
-    close(client.getFd());
 }
+
+

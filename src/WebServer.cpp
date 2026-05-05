@@ -76,7 +76,7 @@ void    WebServer::handle_new_connection(Server *srv)
                         close(client_fd);
                         continue;
                 }
-                if(add_to_epoll(_epoll_fd, client_fd, EPOLLIN))
+                if(add_to_epoll(_epoll_fd, client_fd, EPOLLIN | EPOLLRDHUP))
                 {
                         close(client_fd);
                         continue;
@@ -94,10 +94,13 @@ void    WebServer::close_connection(int fd)
 
 void    WebServer::handle_client_response(int fd)
 {
+        
+
         int sent_byte = _clients[fd].getSentlen();
         int total_len =  _clients[fd].getRespLen();
         const std::string& resp = _clients[fd].getResponse();
         int new_sent_byte = sent_byte;
+        
         int n = send(fd, resp.c_str() + sent_byte, total_len - sent_byte, MSG_NOSIGNAL);
         if(n <= 0)
         {
@@ -145,7 +148,9 @@ void    WebServer::handle_client_request(int fd)
         {
                 buf[bytes] = '\0';
                 _clients[fd].parseRequest(buf);
-                if(_clients[fd].getParsed())
+                if(_clients[fd].getRequest().getStop())
+                        close_connection(fd);
+                else if(_clients[fd].getParsed())
                 {
                         execute_methods(fd);
                         handle_client_response(fd);
@@ -215,6 +220,7 @@ void    WebServer::runServer()
                         // ── new connection ──
                         if (srv) 
                         {
+                                std::cout << "-----------0000000-----" << std::endl;
                                 handle_new_connection(srv);
                                 continue;
                         }
@@ -231,6 +237,7 @@ void    WebServer::runServer()
                         // ── data ready to recv ──
                         if (ev & EPOLLIN)
                         {
+                                std::cout << "-----333-----------" << std::endl;
                                 handle_client_request(fd);
                                 if(_clients.count(fd))
                                         _clients[fd].setLastactive(time(NULL));
@@ -239,6 +246,7 @@ void    WebServer::runServer()
                         // ── ready to send ──
                         if (ev & EPOLLOUT)
                         {
+                                std::cout << "----------------" << std::endl;
                                 handle_client_response(fd);
                                 if(_clients.count(fd))
                                         _clients[fd].setLastactive(time(NULL));
