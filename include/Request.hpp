@@ -17,7 +17,7 @@ class	Request
 		std::string							version;
 		std::string							query;
 		std::map<std::string, std::string>	heads;
-		size_t								body_size;
+		size_t								max_body_size;
 		bool								stop; // if true stop !
 
 	public:
@@ -30,6 +30,7 @@ class	Request
 		void	setVersion( std::string v );
 		void	setQuery( std::string q );
 		void	setHeaders( std::map<std::string, std::string> h );
+		void	setMaxBodySize( size_t m_b_s );
 		void	setStop( bool s );
 
 		std::string							getMethod( void ) const;
@@ -37,6 +38,7 @@ class	Request
 		std::string							getVersion( void ) const;
 		std::string							getQuery( void ) const;
 		std::map<std::string, std::string>	getHeaders( void ) const;
+		size_t								getMaxBodySize( void ) const;
 		bool								getStop( void ) const;
 
 		void	print_heads( void );
