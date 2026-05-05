@@ -15,10 +15,9 @@ class	Request
 		std::string							method;
 		std::string							path;
 		std::string							version;
-		std::map<std::string, std::string>				heads;
 		std::string							body;
 		std::string							query;
-		std::map<std::string, std::string>	heads;
+		std::map<std::string, std::string>				heads;
 		size_t								max_body_size;
 		bool								stop; // if true stop !
 
@@ -31,6 +30,7 @@ class	Request
 		void	setPath( std::string p );
 		void	setVersion( std::string v );
 		void	setQuery( std::string q );
+		void	setBody( std::string b );
 		void	setHeaders( std::map<std::string, std::string> h );
 		void	setMaxBodySize( size_t m_b_s );
 		void	setStop( bool s );
@@ -39,6 +39,7 @@ class	Request
 		std::string							getPath( void ) const;
 		std::string							getVersion( void ) const;
 		std::string							getQuery( void ) const;
+		std::string							getBody( void ) const;
 		std::map<std::string, std::string>	getHeaders( void ) const;
 		size_t								getMaxBodySize( void ) const;
 		bool								getStop( void ) const;

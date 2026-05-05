@@ -8,7 +8,7 @@
 
 Connection::Connection(Server* srv, int fd): _fd(fd), _server(srv)
 , _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL))
-, _cookie(""), _is_there_body(false), _header_parsed(false), _raw_request("") {}
+, _is_there_body(false), _header_parsed(false), _raw_request("") {}
 
 
 Connection::Connection() : _fd(-1), _server(NULL), _parsed(false),

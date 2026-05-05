@@ -68,7 +68,6 @@ public:
     size_t parseBodySize(const std::string& value);
 
 
-    size_t parseBodySize(const std::string& value);
     bool isValidMethod(const std::string& method);
     int validatePort(int port);
     void validateServerConflicts(

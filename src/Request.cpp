@@ -1,6 +1,7 @@
-#include "Request.hpp"
+#include "../include/Request.hpp"
 
-Request::Request( void ) : method(""), path(""), version(""), query(""), heads(), max_body_size(0), stop(false)
+Request::Request( void ) : method(""), path(""), version(""), query("")
+, heads(), max_body_size(0), stop(false)
 {}
 
 Request::Request( const Request &old ) : method(old.method), path(old.path), version(old.version), 
@@ -44,6 +45,11 @@ void	Request::setQuery( std::string q )
 	query = q;
 }
 
+void	Request::setBody( std::string b )
+{
+	body = b;
+}
+
 void	Request::setHeaders( std::map<std::string, std::string> h )
 {
 	heads = h;
@@ -79,6 +85,11 @@ std::string	Request::getVersion( void ) const
 std::string	Request::getQuery( void ) const
 {
 	return (query);
+}
+
+std::string	Request::getBody( void ) const
+{
+	return (body);
 }
 
 std::map<std::string, std::string>	Request::getHeaders( void ) const
