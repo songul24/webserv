@@ -1,95 +1,89 @@
 #include "../include/Request_header.hpp"
 
-std::string	skip_request_line( std::string &buffer )
+std::string skip_request_line(std::string &buffer)
 {
-	size_t	count = 0;
-	size_t	i = 0;
+	size_t pos = buffer.find("\r\n");
+	if (pos == std::string::npos)
+		return ("");
 
-	while (i < buffer.size() && i++ < buffer.size())
-	{
-		if (buffer[i] == '\r' && buffer[i + 1] == '\n')
-			break ;
-		count++;
-	}
-	buffer.erase(0, count + 3);
-
+	buffer.erase(0, pos + 2);
 	return (buffer);
 }
 
-std::map<std::string, std::string>	cut_header( std::vector<std::string> &lines )
+static std::string trim(const std::string &str)
 {
-	std::vector<std::string>::iterator	it = lines.begin();
-	std::map<std::string, std::string>	header;
-	std::string							line;
-	std::string							key;
-	std::string							value;
-	size_t								colon_index = 0;
+	size_t start = str.find_first_not_of(" \t");
+	size_t end = str.find_last_not_of(" \t");
 
-	while (it < lines.end())
+	if (start == std::string::npos)
+		return ("");
+
+	return (str.substr(start, end - start + 1));
+}
+
+static void to_lower(std::string &str)
+{
+	for (size_t i = 0; i < str.size(); i++)
+		str[i] = std::tolower(str[i]);
+}
+
+std::map<std::string, std::string> cut_header(std::vector<std::string> &lines)
+{
+	std::map<std::string, std::string> header;
+
+	for (size_t i = 0; i < lines.size(); i++)
 	{
-		line = *it;
+		const std::string &line = lines[i];
 
-		colon_index = line.find(':');
+		size_t colon_index = line.find(':');
 		if (colon_index == std::string::npos)
-		{
-			it++;
 			continue;
-		}
 
-		key = line.substr(0, colon_index);
-		value = line.substr(colon_index + 2);
+		std::string key = line.substr(0, colon_index);
+		std::string value = line.substr(colon_index + 1);
+
+		key = trim(key);
+		value = trim(value);
+
+		to_lower(key);
+
 		header[key] = value;
-		it++;
 	}
 
-	return (header);
+	return header;
 }
 
-void	fill_lines( std::vector<std::string> &lines, std::string &buffer )
+void fill_lines(std::vector<std::string> &lines, const std::string &buffer)
 {
-	size_t		i = 0;
-	std::string	tmp;
+	size_t start = 0;
 
-	while (i < buffer.size() && i + 1 < buffer.size())
+	while (true)
 	{
-		if (buffer[i] == '\r' && buffer[i + 1] == '\n')
-		{
-			if (tmp.empty())
-			{
-				tmp.clear();
-				i += 2;
-				continue ;
-			}
-			else
-			{
-				lines.push_back(tmp);
-				
-				tmp.clear();
-				i += 2;
-				continue ;
-			}
-		}
+		size_t end = buffer.find("\r\n", start);
+		if (end == std::string::npos)
+			break;
 
-		tmp += buffer[i];
-		i++;
+		if (end == start)
+			break;
+
+		lines.push_back(buffer.substr(start, end - start));
+		start = end + 2;
 	}
 }
 
-void	parse_headers( std::string &buffer, Request &request )
+void parse_headers(std::string &buffer, Request &request)
 {
-	std::string							new_buffer;
-	std::map<std::string, std::string>	header;
-	std::vector<std::string>				lines;
+	std::string new_buffer = skip_request_line(buffer);
 
-	new_buffer = skip_request_line(buffer);
+	if (new_buffer.empty())
+		return;
 
-	if (new_buffer.empty()) 
-		return ;
-
+	std::vector<std::string> lines;
 	fill_lines(lines, new_buffer);
 
-	header = cut_header(lines);
-	request.setHeaders(header);
-	request.print_heads();
+	std::map<std::string, std::string> header = cut_header(lines);
 
+	request.setHeaders(header);
+
+	request.print_heads();
 }
