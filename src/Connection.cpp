@@ -2,15 +2,18 @@
 #include "../include/Server.hpp"
 #include "../include/Request_header.hpp"
 #include "../include/Request_line.hpp"
+#include "../include/configfile.hpp"
 
 
 
 Connection::Connection(Server* srv, int fd): _fd(fd), _server(srv)
-, _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL)), _request(), _is_there_body(false), _raw_request(0){}
+, _parsed(false), _sentLen(0),_response("") , _respLen(0), _last_active(time(NULL))
+, _cookie(""), _is_there_body(false), _header_parsed(false), _raw_request("") {}
+
 
 Connection::Connection() : _fd(-1), _server(NULL), _parsed(false),
                _sentLen(0), _respLen(0), _last_active(0), _is_there_body(false),
-               _raw_request(NULL) {}
+               _raw_request("") {}
 
 Connection::Connection(Connection const &other): _fd(other._fd), _server(other._server)
 , _parsed(other._parsed), _sentLen(other._sentLen),_response(other._response) , _respLen(other._respLen), _last_active(other._last_active), _request(other._request), _is_there_body(other._is_there_body), _raw_request(other._raw_request){}
@@ -53,8 +56,12 @@ void    Connection::parseRequest( const char *buf )
         if (_raw_request.find("\r\n\r\n") == std::string::npos)
                 return ;
 
-        parse_request(_raw_request, _request);
-        parse_headers(_raw_request, _request);
+        if (!_header_parsed)
+        {
+                parse_request(_raw_request, _request);
+                parse_headers(_raw_request, _request);
+                _header_parsed = true;
+        }
 
         std::string     content_length = _request.getHeaders()["Content-Length"];
         if (!content_length.empty())
@@ -63,15 +70,22 @@ void    Connection::parseRequest( const char *buf )
                 size_t  header_end = _raw_request.find("\r\n\r\n") + 4;
                 size_t  content_received = _raw_request.size() - header_end;
 
+                if (body_len > _request.getMaxBodySize())
+                {
+                        std::cout << "413 Content Too Large" << std::endl;
+		        _request.setStop(true);
+                        return ;
+                }
+
                 if (body_len > content_received)
                         return ;
 
                 _request.setBody(_raw_request.substr(header_end, body_len));
+                _is_there_body = true;
         }
         
         _is_there_body = true;
         _parsed = true;
-
 }
 
 
@@ -83,8 +97,10 @@ int             Connection::getRespLen() const {return _respLen;}
 std::string     Connection::getResponse() const {return _response;}
 time_t          Connection::get_Lastactive() const {return _last_active;}
 bool            Connection::getIsThereBody( void ) const {return _is_there_body;}
+bool            Connection::getHeaderParsed( void ) const {return _header_parsed;}
 std::string     Connection::getRawRequest( void ) const {return _raw_request;}
 Request         Connection::getRequest(void) const  {return _request;}
+
 
 
 void            Connection::setSentlen(size_t sentLen) {_sentLen = sentLen;}
@@ -93,5 +109,6 @@ void            Connection::setResponse(const std::string& response) {_response 
 void            Connection::setRespLen(size_t respLen) {_respLen = respLen;}
 void            Connection::setLastactive(time_t last_active) {_last_active = last_active;}
 void            Connection::setIsThereBody( bool t_or_f ) {_is_there_body = t_or_f;}
+void            Connection::setHeaderParsed( bool t_or_f ) {_header_parsed = t_or_f;}
 void            Connection::setRawRequest( std::string raw ) {_raw_request = raw;}
 
