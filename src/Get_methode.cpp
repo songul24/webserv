@@ -280,46 +280,49 @@ std::string handleGET(const Request &req, const ServerConfig &srv,
     }
     return buildResponse(200, readFile(path), mimeType(path));
 }
-void send_get_response(Connection& client, const std::string& content)
-{
-//    std::cout << "--- DEBUG send_get_response ---" << std::endl;
-//     std::cout << "Content passed in: [" << content << "]" << std::endl;
-//     std::cout << "Content size: " << content.size() << std::endl;
+// void    send_get_response(Connection& client, const std::string& status)
+// {
+//         // std::string body;
+//         // if (status != "204 No Content")
+//         //         body = "<html><body><h1>" + status + "</h1></body></html>";
 
-//     // 1. The Status Line (Must start with Protocol, then Code, then Phrase)
-//     std::string resp = "HTTP/1.0 200 OK\r\n";
-    
-//     // 2. The Headers
-//     std::ostringstream oss;
-//     oss << content.size();
-//     resp += "Content-Length: " + oss.str() + "\r\n";
-//     resp += "Content-Type: text/html\r\n"; // Or detect type based on file
-//     resp += "Connection: close\r\n";
-    
-//     // 3. The Empty Line (CRLF) - Mandatory!
-//     resp += "\r\n";
-    
-    // 4. The Body
-    // resp = content;
+//         // std::string resp = "HTTP/1.0 " + status + "\r\n";
+//         // std::ostringstream oss;
+//         // oss << body.size();
+//         // resp += "Content-Length: " + oss.str() + "\r\n";
+//         // if (!body.empty())
+//         //         resp += "Content-Type: text/html\r\n";
+//         // resp += "\r\n";
+//         // resp += body;
 
-    client.setResponse(content);
-    client.setRespLen(content.size());
-    client.setSentlen(0);
-}
+//         client.setResponse(resp);
+//         client.setRespLen(resp.size());
+//         client.setSentlen(0);
+// }
 
+// void Get_method(Connection &client, const std::map<std::string, std::string>& env)
+// {
+//     //Récupérer la requête
+//     Request req = client.getRequest();
+//     //Récupérer la configuration du serveur
+//     ServerConfig config = client.getServer()->getConfig();
+//     std::string response = handleGET(req, config, env);
+//     //Envoyer la réponse au client
+    
+//     send_get_response(client, response);
+    
+//     //Fermer la connexion (HTTP/1.0)
+// }
 void Get_method(Connection &client, const std::map<std::string, std::string>& env)
 {
-    //Récupérer la requête
     Request req = client.getRequest();
-    //Récupérer la configuration du serveur
     ServerConfig config = client.getServer()->getConfig();
-    std::string response = "";
-    response = handleGET(req, config, env);
-    //Envoyer la réponse au client
-    
-    send_get_response(client, response);
-    
-    //Fermer la connexion (HTTP/1.0)
+
+    std::string response = handleGET(req, config, env);
+
+    client.setResponse(response);
+    client.setRespLen(response.size());
+    client.setSentlen(0);
 }
 
 
