@@ -99,7 +99,7 @@ bool is_method_allowed(const std::string& method, const std::vector<std::string>
 }
 
 
-void send_delete_response(Connection& client, const std::string& status)
+void  send_delete_response(Connection& client, const std::string& status)
 {
         std::string body;
         if (status != "204 No Content")

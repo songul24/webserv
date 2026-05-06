@@ -76,13 +76,13 @@ void    WebServer::handle_new_connection(Server *srv)
                         close(client_fd);
                         continue;
                 }
-                if(add_to_epoll(_epoll_fd, client_fd, EPOLLIN | EPOLLRDHUP))
+                if(add_to_epoll(_epoll_fd, client_fd, EPOLLIN))
                 {
                         close(client_fd);
                         continue;
-                }       
+                }   
                 _clients[client_fd] = Connection(srv, client_fd);
-                std::cout << "New client fd= " << client_fd << std::endl;
+                std::cout << "New client fd=" << client_fd << std::endl;
         }
 }
 
@@ -90,11 +90,12 @@ void    WebServer::close_connection(int fd)
 {
         epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
         _clients.erase(fd);
+        close(fd);
 }
 
 void    WebServer::handle_client_response(int fd)
 {
-        
+        std::cout << "Send client resp----> " << fd << std::endl;
 
         int sent_byte = _clients[fd].getSentlen();
         int total_len =  _clients[fd].getRespLen();
@@ -131,11 +132,11 @@ void    WebServer::execute_methods(int fd)
         
         if(method == "DELETE")
                 Deleth_method(_clients[fd]);
-        // else if(method == "POST")
-        //         Post_method(_clients[fd], env);
         else if(method == "GET")
                 Get_method(_clients[fd], env);
-        
+                // else if(method == "POST")
+                //         Post_method(_clients[fd], env);
+        // send_get_response(_clients[fd], "404 Not Found");
 }
 
 void    WebServer::handle_client_request(int fd)
@@ -169,6 +170,7 @@ void    WebServer::check_timeout()
                 Connection &client = it->second;
                 if (difftime(time(NULL), client.get_Lastactive()) > 60)
                 {
+                        std::cout << "HERE IN CHECKTIMEOUT______" << std::endl;
                         epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
                         _clients.erase(it++); 
                         std::cout << "timeout fd=" << fd << std::endl;
@@ -199,6 +201,7 @@ void    WebServer::runServer()
 
         while(g_run)
         {
+                std::cout << "-----4444-----------" << std::endl;
                 int n_ready = epoll_wait(_epoll_fd, events, MAX_EVENTS, 5000);
 
                 if (n_ready < 0)
@@ -220,11 +223,11 @@ void    WebServer::runServer()
                         // ── new connection ──
                         if (srv) 
                         {
-                                std::cout << "-----------0000000-----" << std::endl;
+                                std::cout << "-----------0000000----- " << n_ready << std::endl;
                                 handle_new_connection(srv);
                                 continue;
                         }
-
+                        std::cout << "-----9999-----------" << std::endl;
                         // ── error or hangup ──
                         if (ev & (EPOLLERR | EPOLLHUP)) 
                         {
@@ -254,4 +257,5 @@ void    WebServer::runServer()
                 }
                 check_timeout();
         }
+        std::cout << "-----88888-----------" << std::endl;
 }

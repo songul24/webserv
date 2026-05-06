@@ -38,11 +38,12 @@ Connection& Connection::operator=(Connection const &other)
 
 Connection::~Connection()
 {
-        if(_fd != -1)
-        {
-                close(_fd);
-                _fd = -1;
-        }
+        // if(_fd != -1)
+        // {
+        //         std::cout << "client " << _fd << "closed!" << std::endl;
+        //         // close(_fd);
+        //         // _fd = -1;
+        // }
 }
 
 
