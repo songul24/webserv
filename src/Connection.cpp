@@ -46,47 +46,66 @@ Connection::~Connection()
         // }
 }
 
-
-
-
-// The parse request method :)
-void    Connection::parseRequest( const char *buf )
+void Connection::parseRequest(const char *buf)
 {
-        _raw_request += buf;
+	_raw_request += buf;
 
-        if (_raw_request.find("\r\n\r\n") == std::string::npos)
-                return ;
+	size_t header_end = _raw_request.find("\r\n\r\n");
 
-        if (!_header_parsed)
+	if (header_end == std::string::npos)
+		return;
+
+	if (!_header_parsed)
+	{
+		parse_request(_raw_request, _request);
+
+		if (_request.getStop())
+			return;
+
+		parse_headers(_raw_request, _request);
+
+		_header_parsed = true;
+	}
+
+	header_end += 4;
+
+	std::map<std::string, std::string>      headers = _request.getHeaders();
+	std::string                             content_length_str;
+
+	if (headers.find("content-length") != headers.end())
+		content_length_str = headers["content-length"];
+
+	if (content_length_str.empty())
         {
-                parse_request(_raw_request, _request);
-                parse_headers(_raw_request, _request);
-                _header_parsed = true;
+        	if (_request.getMethod() == "POST")
+        	{
+                        std::cout << "411 Length Required" << std::endl;
+        		_request.setStop(true);
+        		return;
+        	}
+
+        	_parsed = true;
+        	return;
         }
 
-        std::string     content_length = _request.getHeaders()["Content-Length"];
-        if (!content_length.empty())
-        {
-                size_t  body_len = std::atoi(content_length.c_str());
-                size_t  header_end = _raw_request.find("\r\n\r\n") + 4;
-                size_t  content_received = _raw_request.size() - header_end;
+	size_t body_length = std::atoi(content_length_str.c_str());
 
-                if (body_len > _request.getMaxBodySize())
-                {
-                        std::cout << "413 Content Too Large" << std::endl;
-		        _request.setStop(true);
-                        return ;
-                }
+	if (body_length > _request.getMaxBodySize())
+	{
+		std::cout << "413 Content Too Large\n";
+		_request.setStop(true);
+		return;
+	}
 
-                if (body_len > content_received)
-                        return ;
+	size_t received_body = _raw_request.size() - header_end;
 
-                _request.setBody(_raw_request.substr(header_end, body_len));
-                _is_there_body = true;
-        }
-        
-        _is_there_body = true;
-        _parsed = true;
+	if (received_body < body_length)
+		return;
+
+	_request.setBody(_raw_request.substr(header_end, body_length));
+
+	_is_there_body = true;
+	_parsed = true;
 }
 
 

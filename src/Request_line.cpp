@@ -1,131 +1,107 @@
 #include "../include/Request_line.hpp"
 
-std::vector<std::string>	split(std::string &s, char separator)
+static std::vector<std::string> split( const std::string &s )
 {
 	std::vector<std::string>	tokens;
+	std::istringstream 			stream(s);
 	std::string					token;
-	std::istringstream			tokenStream(s);
 
-	while(std::getline(tokenStream, token, separator))
+	while (stream >> token)
 		tokens.push_back(token);
 
 	return (tokens);
 }
 
-int	parse_method( std::string &method, Request &request )
+static int parse_method( const std::string &method, Request &request )
 {
 	if (method != "GET" && method != "POST" && method != "DELETE")
 		return (400);
-	else
-	{
-		request.setMethod(method);
-		request.setStop(false);
-		return (0);
-	}
-}
 
-int	parse_path( std::string &path, Request &request )
-{
-	// /search?q=hello
-
-	if (path[0] != '/')
-		return (400);
-	else if (path.find("..") != std::string::npos)
-		return (403);
-
-	size_t	pos = path.find('?');
-	if (pos != std::string::npos)
-	{
-		request.setQuery(path.substr(pos + 1));
-		request.setPath(path.substr(0, pos));
-		request.setStop(false);
-		return (0);
-	}
-	
-	request.setPath(path);
-	request.setStop(false);
+	request.setMethod(method);
 	return (0);
 }
 
-int	parse_version( std::string &version, Request &request )
+static int parse_path( const std::string &path, Request &request )
 {
-	if (version == "HTTP/1.1" || version == "HTTP/1.2")
-		return (505);
-	else if (version != "HTTP/1.0")
+	if (path.empty() || path[0] != '/')
 		return (400);
+
+	if (path.find("..") != std::string::npos)
+		return (403);
+
+	size_t query_pos = path.find('?');
+
+	if (query_pos != std::string::npos)
+	{
+		request.setPath(path.substr(0, query_pos));
+		request.setQuery(path.substr(query_pos + 1));
+	}
 	else
 	{
-		request.setVersion(version);
-		request.setStop(false);
-		return (0);
+		request.setPath(path);
 	}
+
+	return (0);
 }
 
-
-void	parse_request( std::string &buffer, Request &request )
+static int parse_version( const std::string &version, Request &request )
 {
-	// (void)request;
-	std::string		first;
-	int				i = 0;
+	if (version != "HTTP/1.1" && version != "HTTP/1.0")
+		return (505);
 
-	while (buffer[i] && !(buffer[i] == '\r' && buffer[i + 1] == '\n'))
+	request.setVersion(version);
+	return (0);
+}
+
+void parse_request( std::string &buffer, Request &request )
+{
+	size_t line_end = buffer.find("\r\n");
+
+	if (line_end == std::string::npos)
 	{
-		first += buffer[i];
-		i++;
+		request.setStop(true);
+		return ;
 	}
 
-	std::vector<std::string>			request_line = split(first, ' ');
-	std::vector<std::string>::iterator	it = request_line.begin();
+	std::string					first_line = buffer.substr(0, line_end);
+	std::vector<std::string>	request_line = split(first_line);
 
 	if (request_line.size() != 3)
 	{
-		std::cout << "400 Bad Request" << std::endl;
+		std::cout << "400 Bad Request\n";
 		request.setStop(true);
-		return ;
+		return;
 	}
 
-	if (parse_method(*it, request) == 400)
+	int							status;
+	status = parse_method(request_line[0], request);
+
+	if (status)
 	{
-		std::cout << "400 Bad Request" << std::endl;
+		std::cout << "400 Bad Request\n";
 		request.setStop(true);
-		std::cout << "parse_method\n";
-		return ;
+		return;
 	}
 
-	int	p_path = parse_path(*(it + 1), request);
-	if (p_path == 400)
+	status = parse_path(request_line[1], request);
+	if (status == 400)
 	{
-		std::cout << "400 Bad Request" << std::endl;
+		std::cout << "400 Bad Request\n";
 		request.setStop(true);
-		std::cout << "parse_path\n";
-
-		return ;
+		return;
 	}
-	else if (p_path == 403)
+	else if (status == 403)
 	{
-		std::cout << "403 Forbidden" << std::endl;
+		std::cout << "403 Forbidden\n";
 		request.setStop(true);
-		std::cout << "parse_path\n";
-		return ;
+		return;
 	}
 
-	int		p_version = parse_version(*(it + 2), request);
-	if (p_version == 400)
+	status = parse_version(request_line[2], request);
+	if (status == 505)
 	{
-		std::cout << "400 Bad Request" << std::endl;
+		std::cout << "505 HTTP Version Not Supported\n";
 		request.setStop(true);
-		std::cout << "parse_version\n";
-		return ;
+		return;
 	}
-	else if (p_version == 505)
-	{
-		std::cout << "505 HTTP Version Not Supported" << std::endl;
-		request.setStop(true);
-		std::cout << "parse_version\n";
-		return ;
-	}
-
-	// std::cout << "Method -> " << request.getMethod() << std::endl;
-	// std::cout << "Path -> " << request.getPath() << std::endl;
-	// std::cout << "Version -> " << request.getVersion() << std::endl;
 }
