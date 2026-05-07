@@ -1,4 +1,4 @@
-// #include "../include/Post_method.hpp"
+#include "../include/WebServer.hpp"
 
 // void    set_enum( Type &type, std::string &content_type )
 // {
@@ -68,7 +68,7 @@
     
 // }
 
-// void    post_method( Request &request, Connection &cnx )
+// void    post_method(Connection &cnx)
 // {
 //     // Multipart
 //     if (!cnx.getIsThereBody())
