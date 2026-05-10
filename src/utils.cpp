@@ -1,13 +1,14 @@
 #include "../include/WebServer.hpp"
 
 
-std::map<std::string, std::string>      setCgiEnv(Connection client)
+std::map<std::string, std::string>      setCgiEnv(Connection& client)
 {
         std::map<std::string, std::string> env; 
         Request req = client.getRequest();
        
         env["REQUEST_METHOD"] = req.getMethod();
         env["SERVER_PROTOCOL"] = req.getVersion();  
+        env["SCRIPT_NAME"] = req.getPath();
 
         std::string fullPath = req.getPath();
         size_t queryPos = fullPath.find('?');
@@ -44,7 +45,7 @@ std::map<std::string, std::string>      setCgiEnv(Connection client)
         env["GATEWAY_INTERFACE"] = "CGI/1.1";
         env["SERVER_SOFTWARE"] = "Webserv/1.0";
         env["PATH_TRANSLATED"] = client.getServer()->getConfig().root + env["PATH_INFO"]; 
-        env["SCRIPT_ROOT"] = client.getServer()->getConfig().root;
+        env["DOCUMENT_ROOT"] = client.getServer()->getConfig().root;
         
         return env;
 }
@@ -108,3 +109,11 @@ void    free_env(char **env)
                 free(env[i]);
         delete[] env;
 }
+
+
+
+
+
+
+
+

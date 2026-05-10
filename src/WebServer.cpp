@@ -124,19 +124,21 @@ void    WebServer::handle_client_response(int fd)
 
 void    WebServer::execute_methods(int fd)
 {
-        std::map<std::string, std::string> header = _clients[fd].getRequest().getHeaders();
-
-        std::map<std::string, std::string> env = setCgiEnv(_clients[fd]);
-
         std::string method = _clients[fd].getRequest().getMethod();
-        
+        std::string response;
+
         if(method == "DELETE")
-                Deleth_method(_clients[fd]);
+                response = Delete_method(_clients[fd]);
         else if(method == "GET")
-                Get_method(_clients[fd], env);
-                // else if(method == "POST")
-                //         Post_method(_clients[fd], env);
-        // send_get_response(_clients[fd], "404 Not Found");
+                response = Get_method(_clients[fd]);
+        else if(method == "POST")
+                response = Post_method(_clients[fd]);
+        else
+                response = errorResponse(404, "text/html", &_clients[fd].getServer()->getConfig());
+
+        _clients[fd].setResponse(response);
+        _clients[fd].setRespLen(response.size());
+        _clients[fd].setSentlen(0);
 }
 
 void    WebServer::handle_client_request(int fd)

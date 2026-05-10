@@ -12,14 +12,15 @@
 class	Request
 {
 	private:
-		std::string							method;
-		std::string							path;
-		std::string							version;
-		std::string							body;
-		std::string							query;
-		std::map<std::string, std::string>				heads;
-		size_t								max_body_size;
-		bool								stop; // if true stop !
+		std::string		method;
+		std::string		path;
+		std::string		version;
+		std::string		body;
+		std::string		query;
+		std::map<std::string, std::string>	heads;
+		size_t			max_body_size;
+		bool			stop; // if true stop !
+		int			status;
 
 	public:
 		Request( void );

@@ -1,90 +1,116 @@
 #include "../include/WebServer.hpp"
 
-// void    set_enum( Type &type, std::string &content_type )
-// {
-//     if (content_type == "application/x-www-form-urlencoded")
-//         type = URLENCODED;
-//     else if (content_type.find("multipart/form-data"))
-//         type = MULTIPART;
-//     else
-//         type = OTHERS;
-// }
+std::string     getExtention(const std::string& type)
+{
+        std::string     ext;
 
-// std::map<std::string, std::string>  urlencoded_handler( std::string &body )
-// {
-//     std::string                                     tmp;
-//     std::vector<std::string>                        holder;
-//     std::vector<std::string>::iterator              holder_it = holder.begin();
-//     std::map<std::string, std::string>              content;
-//     // std::map<std::string, std::string>::iterator    content_it = content.begiLn();
+        if(type == "image/png" || type == "image/gif" || type == "image/webp" 
+            || type == "image/jpeg" || type == "video/mp4")
+                ext = "." + type.substr(6);
+        else if( type == "text/plain" || type == "application/x-www-form-urlencoded")
+                ext =  ".txt";
+        else if (type == "application/octet-stream")
+                ext = ".bin";
+        else if (type == "text/html" || type == "text/css" || type == "text/pdf" || type == "text/json")
+                ext = "." + type.substr(5);
+        else if (type == "text/markdown")
+		ext = ".md";
+	else if (type == "application/pdf")
+		ext = ".pdf";
+	else if (type == "text/x-csrc" )
+		ext = ".c";
+        return ext;
+}
 
-//     int     i = 0;
+std::string     generateRandom_name()
+{
+        std::string name;
+        std::string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        int pos;
 
-//     while (i < body.size() && i + 1 < body.size())
-//     {
-//         if (body.empty())
-//             return ;
+        std::srand(time(NULL));
+        int r = (rand() % 3) + 4;
 
-//         if (body[i] != '&')
-//         {
-//             tmp += body[i];
-//             i++;
-//         }
-//         else
-//         {
-//             holder.push_back(tmp);
-//             i++;
-//             continue ;
-//         }
-//     }
+        for(int i = 0; i < r; i++)
+        {
+            pos = rand() % str.size();
+            name.push_back(str[pos]);    
+        }
+        return name;
+}
 
-//     std::string     data;
-//     std::string     key;
-//     std::string     value;
-//     i = 0;
 
-//     while (holder_it != holder.end())
-//     {
-//         data = *holder_it;
-//         while (data[i] != '=')
-//         {
-//             key += data[i];
-//             i++;
-//         }
-//         i++;
-//         while (i < data.size())
-//         {
-//             value += data[i];
-//         }
-//         content[key] = value;
-//         holder_it++;
-//     }
+std::string    Post_method(Connection &cnx)
+{
+        ServerConfig conf = cnx.getServer()->getConfig();
+        if (!cnx.getIsThereBody())
+                return errorResponse(400, "text/html", &conf);
+        
+        Request req = cnx.getRequest();
+        //get extention
+        std::string extention = getExtention(req.getHeaders()["content-type"]);
+        if(extention.empty())
+        {
+                std::remove(req.getBody().c_str());
+                return errorResponse(415, "text/html", &conf);
+        }
+        //find location + POST allowed
+        const LocationConfig* loc = find_location(conf, req.getPath());
+        if(!loc)
+        {
+                std::remove(req.getBody().c_str());
+                return errorResponse(404, "text/html", &conf);    
+        }
+        const std::vector<std::string>& allowed = (loc && !loc->methods.empty()) 
+        ? loc->methods : conf.methods;     
+        if (!is_method_allowed("POST", allowed))
+        {
+                std::remove(req.getBody().c_str());
+                return errorResponse(405, "text/html", &conf);
+        }
+       
+        std::string root   = loc->root.empty() ? conf.root :loc->root;
+        std::string upload = loc->upload.empty() ? conf.upload : loc->upload;
+        std::string upload_path = root + upload;
+        struct stat buf;
+        if(!stat(upload_path.c_str(), &buf) && S_ISDIR(buf.st_mode))
+        {
+                std::string filename = generateRandom_name() + extention;
+                upload_path += "/" + filename;
+                if(std::rename(req.getBody().c_str(), upload_path.c_str()))
+                {
+                        std::remove(req.getBody().c_str());
+                        return errorResponse(500, "text/html", &conf);
+                }
+                std::string post_path = root + req.getPath();
+                std::string cgi_path = is_cgi(conf, loc, post_path);
+                if(stat(post_path.c_str(), &buf))
+                {
+                         std::remove(upload_path.c_str());
+                        return errorResponse(404, "text/html", &conf);
+                }
+                else if(S_ISREG(buf.st_mode) && !cgi_path.empty())
+                        return (run_cgi(cgi_path, post_path, cnx, upload_path));
+                else if(S_ISDIR(buf.st_mode))
+                {
+                        cgi_path.clear();
+                        std::string mathced_script;
+                        cgi_path = handle_dir_cgi(conf, loc, post_path, mathced_script);
+                        if(!cgi_path.empty())
+                        {
+                                std::string resp = run_cgi(cgi_path, mathced_script, cnx, upload_path);
+                                std::remove(upload_path.c_str());
+                                return resp;
+                        }
+                }
+                return buildResponse(201, "File uploaded successfully", "text/html", NULL);
 
-//     return (content);
-// }
+        }
+        else
+        {
+                std::remove(req.getBody().c_str());
+                return errorResponse(500, "text/html", NULL);
+        }
+}
 
-// void    multipart_handler( std::string &body )
-// {
-    
-// }
 
-// void    post_method(Connection &cnx)
-// {
-//     // Multipart
-//     if (!cnx.getIsThereBody())
-//         return ;
-
-//     std::string body = request.getBody();
-//     std::string content_type = request.getHeaders()["content-type"];
-//     Type        _type;
-    
-//     set_enum(_type, content_type);
-    
-//     if (_type == URLENCODED)
-//         urlencoded_handler(body);
-//     else if (_type == MULTIPART)
-//         multipart_handler(body);
-//     else
-//         return_body(body);
-
-// }
