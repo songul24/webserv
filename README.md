@@ -13,9 +13,8 @@ The project focuses on low-level networking, socket programming, HTTP request ha
 * Non-blocking sockets
 * `epoll` multiplexing
 * GET / POST / DELETE methods
-* Static file serving
 * File uploads
-* CGI support (`.py`, `.sh`, `.php`)
+* CGI support (`.py`, `.php`)
 * Autoindex
 * Custom error pages
 * Multiple ports & routes
@@ -90,7 +89,7 @@ Main flow:
 3. Parse HTTP message
 4. Generate response
 5. Send response
-6. Close connection if needed
+6. Close connection
 
 ---
 
@@ -119,7 +118,6 @@ Main flow:
 Supported interpreters:
 
 * Python
-* Bash
 * PHP
 
 Example:
@@ -136,23 +134,60 @@ The server forks a child process, executes the CGI, and sends its output as the 
 
 ```bash
 .
-├── main.cpp
-├── WebServer.cpp
-├── Connection.cpp
-├── Request.cpp
-├── Methods.cpp
-├── MethodPost.cpp
-├── MethodDelete.cpp
-├── runServer.cpp
-├── includes/
-├── config/
+├── Makefile
+├── README.md
+├── config.conf
+├── index.html
+│
+├── include/
+│   ├── Connection.hpp
+│   ├── Request.hpp
+│   ├── Request_header.hpp
+│   ├── Request_line.hpp
+│   ├── Server.hpp
+│   ├── WebServer.hpp
+│   └── configfile.hpp
+│
+├── src/
+│   ├── main.cpp
+│   ├── WebServer.cpp
+│   ├── Server.cpp
+│   ├── Connection.cpp
+│   ├── Request.cpp
+│   ├── Request_header.cpp
+│   ├── Request_line.cpp
+│   ├── Configfile.cpp
+│   ├── Get_methode.cpp
+│   ├── Post_method.cpp
+│   ├── Delete_method.cpp
+│   ├── Cgi.cpp
+│   └── utils.cpp
+│
 ├── errors/
-└── var/www/
+│   ├── 400.html
+│   ├── 403.html
+│   ├── 404.html
+│   ├── 405.html
+│   ├── 408.html
+│   ├── 409.html
+│   ├── 411.html
+│   ├── 413.html
+│   ├── 414.html
+│   ├── 415.html
+│   ├── 500.html
+│   ├── 501.html
+│   ├── 502.html
+│   └── 504.html
+│
+└── storage/
+    ├── session.py
+    ├── session_home.html
+    └── session_login.html
 ```
 
 ---
 
-# Quick Tests
+# Tests
 
 ## GET
 
@@ -176,5 +211,5 @@ curl -X DELETE http://127.0.0.1:8080/file.txt
 
 # Authors
 
-* Fatimezzahra BBOT
-* Chaimae Khater
+* Malika Chaouki
+* Zineb Elgharbaou
