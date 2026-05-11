@@ -1,6 +1,6 @@
 # Webserv
 
-A lightweight HTTP/1.1 web server written in C++98 as part of the 42 curriculum.
+A lightweight HTTP/1.1 web server written in C++98 as part of the 42 curriculum by zelgharb, machaouk
 
 The project focuses on low-level networking, socket programming, HTTP request handling, CGI execution, and asynchronous I/O using `epoll`.
 
@@ -208,6 +208,15 @@ curl -X DELETE http://127.0.0.1:8080/file.txt
 ```
 
 ---
+
+# RESOURCES
+
+- [Understanding epoll](https://fraugsleeves.dev/blog/epoll)
+- [MDN HTTP Cookies Guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies?utm_source=chatgpt.com)
+- [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/?utm_source=chatgpt.com)
+- [Sockets and Network Programming in C](https://www.codequoi.com/en/sockets-and-network-programming-in-c/?utm_source=chatgpt.com)
+- [The Method to epoll’s Madness](https://copyconstruct.medium.com/the-method-to-epolls-madness-d9d2d6378642?utm_source=chatgpt.com)
+
 
 # Authors
 
