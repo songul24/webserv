@@ -68,7 +68,7 @@ std::string buildResponse(int code, const std::string &body, const std::string &
         }
 
         std::ostringstream res;
-        res << "HTTP/1.0 " << status << "\r\n";
+        res << "HTTP/1.0 " << status << "\r\nConnection: close\r\n";;
         res << "Content-Type: " << type << "\r\n";
         res << "Content-Length: " << body.size() << "\r\n";
         res << "\r\n";
@@ -143,6 +143,61 @@ void    kill_proccess(pid_t pid, int fd, const std::string& cgi)
 	waitpid(pid,&status,0);
 	close(fd);
 	std::remove(cgi.c_str());
+}
+
+std::string     cgi_response(std::string& output, ServerConfig* conf)
+{
+        size_t sep = output.find("\r\n\r\n");
+        size_t skip = 4;
+        if (sep == std::string::npos)
+        {
+                sep = output.find("\n\n");
+                if (sep == std::string::npos)
+                        return errorResponse(502, "text/html", conf);
+                skip = 2;
+        }
+
+        std::string cgi_headers = output.substr(0, sep);
+        std::string cgi_body    = output.substr(sep + skip);
+        std::string response;
+        std::string	line;
+
+        size_t status = cgi_headers.find("Status: ");
+	if(status != std::string::npos)
+        {
+                size_t end = cgi_headers.find("\n", status);
+                line = cgi_headers.substr(status + 8, end - (status + 8));
+                cgi_headers.erase(status, end - status + 1);
+                response = "HTTP/1.0 " + line + "\r\nConnection: close\r\n";
+        }
+        if(response.find("HTTP/1.0") == std::string::npos)
+        {
+                if(cgi_headers.find("Location:") != std::string::npos)
+                        response = "HTTP/1.0 302 Found\r\nConnection: close\r\n";
+                else
+                        response = "HTTP/1.0 200 OK\r\nConnection: close\r\n";
+        }
+        line.clear();
+        if(cgi_headers.find("Content-Type:") == std::string::npos)
+        {
+                if(response.find("200 OK") == std::string::npos && response.find("302 Found") == std::string::npos)
+                {
+                        std::stringstream ss(response);
+			ss >> line;
+			ss >> line;
+			return	errorResponse(atoi(line.c_str()), "text/html", conf);
+                }
+                response += "Content-Type: text/html\r\n";
+        }
+        if(cgi_headers.find("Content-Length:") == std::string::npos)
+        {
+                std::stringstream n;
+		n << cgi_body.size();
+                response += "Content-Length: " + n.str() + "\r\n";
+        }
+
+        response += cgi_headers + "\r\n" + cgi_body;
+        return response;
 }
 
 std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath)
@@ -222,7 +277,7 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
                         {
                                 std::string output = read_File(cgiOut);
                                 std::remove(cgiOut.c_str());
-                                return (buildResponse(200, output, "text/html", &conf));
+                                return (cgi_response(output, &conf));
                         }
                         std::remove(cgiOut.c_str());
                         return buildResponse(502, "<h1>502</h1>", "text/html", &conf);
