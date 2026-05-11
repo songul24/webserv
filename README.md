@@ -1,85 +1,180 @@
-# Webserv (C++98)
+# Webserv
 
-A high-performance, non-blocking HTTP/1.1 web server implemented in C++98. This project leverages I/O multiplexing via `epoll` to handle multiple concurrent connections efficiently.
+A lightweight HTTP/1.1 web server written in C++98 as part of the 42 curriculum.
 
-## Table of Contents
-* [Overview](#overview)
-* [Features](#features)
-* [Installation & Usage](#installation--usage)
-* [The I/O Model](#the-io-model)
-* [Configuration System](#configuration-system)
-* [Project Architecture](#project-architecture)
-* [Testing](#testing)
+The project focuses on low-level networking, socket programming, HTTP request handling, CGI execution, and asynchronous I/O using `epoll`.
 
 ---
 
-## Overview
-Webserv is a custom-built HTTP server designed to mimic the core functionality of Nginx. Written strictly in **C++98**, it emphasizes manual resource management, socket programming, and event-driven architecture.
+# Features
 
-## Features
-* **Multiplexing:** Single-process event loop using `epoll` (Linux).
-* **HTTP Methods:** Full support for `GET`, `POST`, and `DELETE`.
-* **CGI:** Execution of scripts (Python, PHP, Bash) with support for environment variables.
-* **Static Serving:** Serves HTML, CSS, and media files with `autoindex` support for directory listing.
-* **File Uploads:** Integrated POST handling for saving files to the server.
-* **Custom Config:** Flexible configuration syntax allowing multiple virtual hosts and location-specific rules.
-* **Resilience:** Non-blocking sockets, timeout management, and graceful signal handling.
+* HTTP/1.1 server
+* Multiple server blocks
+* Non-blocking sockets
+* `epoll` multiplexing
+* GET / POST / DELETE methods
+* Static file serving
+* File uploads
+* CGI support (`.py`, `.sh`, `.php`)
+* Autoindex
+* Custom error pages
+* Multiple ports & routes
+* Config file parser inspired by Nginx
 
 ---
 
-## Installation & Usage
+# Build & Run
 
-### 1. Build the Project
-The project uses a standard `Makefile`.
+## Compile
+
 ```bash
-# Clone the repository
-git clone <your-repo-link>
-cd webserv
-
-# Compile the executable
 make
-2. Launch the ServerBash# Run with the default configuration
+```
+
+## Rebuild
+
+```bash
+make re
+```
+
+## Run with default config
+
+```bash
 ./webserv
+```
 
-# Run with a custom configuration file
-./webserv ./config/custom.conf
-3. Build CommandsCommandActionmakeCompiles the webserv binary.make cleanRemoves object files.make fcleanRemoves objects and the binary.make rePerforms a full re-compile.make debugCompiles with debug symbols and runs via Valgrind.The I/O ModelWebserv utilizes a Non-blocking Event Loop. Unlike a multi-threaded server that spawns a thread per request, Webserv monitors all file descriptors (sockets) simultaneously.Initialization: Sockets are created, bound to ports, and set to O_NONBLOCK.Registration: Listening sockets are added to an epoll instance.The Loop: epoll_wait() pauses execution until an event (Read/Write) occurs.Handling:New Connection: accept() the client and add their FD to the event monitor.Data In (Read): Read request chunks, parse headers, and buffer the body.Data Out (Write): Send the prepared response. Large files are sent in chunks to keep the server responsive.Timeouts: A specialized monitor tracks "last activity" timestamps to drop stalled connections and prevent resource leaks.Configuration SystemThe server is configured via a .conf file. The syntax follows a block-based structure:Nginxserver {
+## Run with custom config
+
+```bash
+./webserv config/file.conf
+```
+
+---
+
+# Configuration Example
+
+```conf
+server {
     listen 127.0.0.1:8080;
-    server_name example.com;
-    client_max_body_size 10M;
-
-    # Default Error Pages
-    error_page 404 ./errors/404.html;
+    client_max_body_size 50M;
 
     location / {
-        root ./var/www/html;
+        root var/www;
         index index.html;
-        methods GET;
+        methods GET POST DELETE;
+        autoindex off;
     }
 
-    location /cgi-bin {
-        root ./var/www/cgi;
+    location /cgi {
+        root var/www/cgi;
         cgi .py /usr/bin/python3;
-        methods GET POST;
-    }
-
-    location /uploads {
-        root ./var/www/uploads;
-        methods POST DELETE;
-        upload ./var/www/uploads/storage;
-        autoindex on;
     }
 }
-Project ArchitectureCore ComponentsWebServer: The "Orchestrator." It initializes the epoll instance and runs the main loop.ServerConfig: The "Brain." It parses the configuration file and stores rules for routing.Connection: The "Worker." Each instance represents a unique client session, managing its own state (Parsing -> Processing -> Sending).Request & Response: Data structures that encapsulate HTTP protocol details.Methods (GET/POST/DELETE): Specialized logic for handling file retrieval, CGI execution, and file deletion.File StructurePlaintext├── includes/           # Header files (.hpp)
-├── src/                # Implementation files (.cpp)
-│   ├── core/           # Main loop and WebServer logic
-│   ├── config/         # Parsing and Config classes
-│   ├── http/           # Request/Response parsing & Methods
-│   └── utils/          # Error handling and File helpers
-├── config/             # Configuration templates
-├── var/www/            # Default web root & CGI scripts
-└── Makefile
-TestingYou can test the server using any standard browser or CLI tools:Basic GET:Bashcurl -v [http://127.0.0.1:8080/](http://127.0.0.1:8080/)
-POST File Upload:Bashcurl -X POST -F "data=@myfile.txt" [http://127.0.0.1:8080/uploads/](http://127.0.0.1:8080/uploads/)
-DELETE Request:Bashcurl -X DELETE [http://127.0.0.1:8080/uploads/myfile.txt](http://127.0.0.1:8080/uploads/myfile.txt)
-Contributors[Your Name] - [GitHub Link][Partner Name] - [GitHub Link]
+```
+
+---
+
+# Architecture
+
+The server uses:
+
+* Non-blocking sockets (`O_NONBLOCK`)
+* `epoll` for event handling
+* One event loop to manage all clients
+* Timeout handling for inactive connections
+
+Main flow:
+
+1. Accept connection
+2. Read request
+3. Parse HTTP message
+4. Generate response
+5. Send response
+6. Close connection if needed
+
+---
+
+# HTTP Methods
+
+## GET
+
+* Serve static files
+* Serve index pages
+* Autoindex directories
+* Execute CGI
+
+## POST
+
+* Handle uploads
+* Execute CGI with body data
+
+## DELETE
+
+* Remove files/directories
+
+---
+
+# CGI
+
+Supported interpreters:
+
+* Python
+* Bash
+* PHP
+
+Example:
+
+```conf
+cgi .py /usr/bin/python3;
+```
+
+The server forks a child process, executes the CGI, and sends its output as the HTTP response.
+
+---
+
+# Project Structure
+
+```bash
+.
+├── main.cpp
+├── WebServer.cpp
+├── Connection.cpp
+├── Request.cpp
+├── Methods.cpp
+├── MethodPost.cpp
+├── MethodDelete.cpp
+├── runServer.cpp
+├── includes/
+├── config/
+├── errors/
+└── var/www/
+```
+
+---
+
+# Quick Tests
+
+## GET
+
+```bash
+curl http://127.0.0.1:8080/
+```
+
+## POST Upload
+
+```bash
+curl -X POST -F "file=@test.txt" http://127.0.0.1:8080/upload
+```
+
+## DELETE
+
+```bash
+curl -X DELETE http://127.0.0.1:8080/file.txt
+```
+
+---
+
+# Authors
+
+* Fatimezzahra BBOT
+* Chaimae Khater
