@@ -148,7 +148,7 @@ void    WebServer::handle_client_request(int fd)
         {
                 buf[bytes] = '\0';
                 _clients[fd].parseRequest(buf);
-                if(_clients[fd].getRequest().getStop())
+                if(_clients[fd].getRequest().isError())
                         close_connection(fd);
                 else if(_clients[fd].getParsed())
                 {
