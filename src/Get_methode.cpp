@@ -75,37 +75,40 @@ static std::string autoIndex(const std::string &path,
 static std::string handleDirectory(const std::string &path, const std::string &uri, Connection& client, const LocationConfig* loc)
 {
     ServerConfig srv = client.getServer()->getConfig();
-    if (!uri.empty() && uri[uri.size() - 1] != '/')
-        return "HTTP/1.0 301 Moved Permanently\r\nLocation: " + uri + "/\r\nContent-Length: 0\r\n\r\n";
+
+    // Normaliser le path avec slash final pour la recherche des fichiers
+    std::string dir_path = path;
+    if (!dir_path.empty() && dir_path[dir_path.size() - 1] != '/')
+        dir_path += "/";
+
     std::vector<std::string> index;
-    if (loc != NULL && !loc->index.empty()) {
+    if (loc != NULL && !loc->index.empty())
         index = loc->index;
-    } else {
+    else
         index = srv.index;
-    }
+
     for (size_t i = 0; i < index.size(); i++)
     {
-        std::string full = path + "/" + index[i];
+        std::string full = dir_path + index[i];
         if (exists(full))
-        {           
+        {
             std::string cgiPath = is_cgi(srv, loc, full);
             if (!cgiPath.empty())
                 return run_cgi(cgiPath, full, client, "");
             return buildResponse(200, read_File(full), mimeType(full), NULL);
         }
     }
+
     bool autoindex;
-    if (loc != NULL) {
+    if (loc != NULL)
         autoindex = loc->autoindex;
-    } else {
+    else
         autoindex = srv.autoindex;
-    }
 
     if (autoindex)
-        return autoIndex(path, uri, srv);
+        return autoIndex(dir_path, uri, srv);
     return errorResponse(403, "text/html", &srv);
 }
-
 
 std::string  Get_method(Connection &client)
 {

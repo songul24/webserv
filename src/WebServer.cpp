@@ -141,27 +141,51 @@ void    WebServer::execute_methods(int fd)
         _clients[fd].setSentlen(0);
 }
 
+// void    WebServer::handle_client_request(int fd)
+// {
+//         char buf[10000];
+//         int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
+//         if(bytes <= 0)
+//                 close_connection(fd);
+//         else
+//         {
+//                 buf[bytes] = '\0';
+//                 _clients[fd].parseRequest(buf);
+//                 if(_clients[fd].getRequest().isError())
+//                         close_connection(fd);
+//                 else if(_clients[fd].getParsed())
+//                 {
+//                         execute_methods(fd);
+//                         handle_client_response(fd);
+//                 }
+//         }
+// }
+
 void    WebServer::handle_client_request(int fd)
 {
         char buf[10000];
         int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
         if(bytes <= 0)
-                close_connection(fd);
-        else
         {
-                buf[bytes] = '\0';
-                _clients[fd].parseRequest(buf);
-                if(_clients[fd].getRequest().getStop())
-                        close_connection(fd);
-                else if(_clients[fd].getParsed())
-                {
-                        execute_methods(fd);
-                        handle_client_response(fd);
-                }
+                close_connection(fd);
+                return ;
+        }
+        buf[bytes] = '\0';
+        _clients[fd].parseRequest(buf);
+        if(_clients[fd].getRequest().isError())
+        {
+                int code = _clients[fd].getRequest().getError();
+                ServerConfig conf = _clients[fd].getServer()->getConfig();
+                std::string resp = errorResponse(code, "text/html", &conf);
+                send(fd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
+                close_connection(fd);
+        }
+        else if(_clients[fd].getParsed())
+        {
+                execute_methods(fd);
+                handle_client_response(fd);
         }
 }
-
-
 void    WebServer::check_timeout()
 {
         std::map<int, Connection>::iterator it;
