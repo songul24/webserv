@@ -80,10 +80,14 @@ const LocationConfig* find_location(const ServerConfig& config, const std::strin
 
                 if (url.compare(0, loc.path.size(), loc.path) == 0)
                 {
-                        if (loc.path.size() > bestLen)
+                        if (url.size() == loc.path.size() || url[loc.path.size()] == '/' ||
+                                loc.path[loc.path.size()-1] == '/')
                         {
-                            bestLen = loc.path.size();
-                            best = &loc;
+                                if (loc.path.size() > bestLen)
+                                {
+                                    bestLen = loc.path.size();
+                                    best = &loc;
+                                }
                         }
                 }
         }
@@ -101,21 +105,12 @@ bool is_method_allowed(const std::string& method, const std::vector<std::string>
         return false;
 }
 
-std::string    Delete_method(Connection& client)
+std::string    Delete_method(Connection& client, const LocationConfig* loc, std::string& path)
 {
         std::string url    = client.getRequest().getPath();
         const ServerConfig config = client.getServer()->getConfig();   
         if (check_path(url))
                 return errorResponse(403, "text/html", &config);
-
-        const LocationConfig* loc = find_location(config, url); 
-        if(!loc)
-                return errorResponse(404, "text/html", &config);
-        std::string status;
-        
-        const std::vector<std::string>& allowed = (loc && !loc->methods.empty()) ? loc->methods : config.methods;     
-        if (!is_method_allowed("DELETE", allowed))
-                return errorResponse(405, "text/html", &config);
 
         std::string root = (loc && !loc->root.empty()) ? loc->root : config.root;       
         return Delete_file(url, root, config);

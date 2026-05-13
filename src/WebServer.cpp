@@ -1,5 +1,5 @@
 #include "../include/WebServer.hpp"
-
+// #include "Cgi.cpp"
 
 
 volatile sig_atomic_t g_run = 1;
@@ -121,20 +121,83 @@ void    WebServer::handle_client_response(int fd)
         }
 }
 
+std::string     buildRedirect(int code, const std::string& new_url)
+{
+        std::ostringstream oss;
+        std::string statusText;
+
+        switch(code)
+        {
+                case 301: statusText = "Moved Permanently"; break;
+                case 302: statusText = "Found"; break;
+                case 303: statusText = "See Other"; break;
+                case 307: statusText = "Temporary Redirect"; break;
+                case 308: statusText = "Permanent Redirect"; break;
+                default:  statusText = "Moved"; break;
+        }
+
+        oss << "HTTP/1.1 " << code << " " << statusText << "\r\nConnection: close\r\n";
+        oss << "Location: " << new_url << "\r\n";
+        oss << "Content-Length: 0\r\n";
+        oss << "\r\n";
+
+        return oss.str();
+}
+
+const LocationConfig* setup_methods(Connection& client, std::string* resp)
+{
+        ServerConfig conf = client.getServer()->getConfig();
+        Request req = client.getRequest();
+        std::string method = req.getMethod();
+        
+        const LocationConfig* loc = find_location(conf, req.getPath());
+        const std::vector<std::string>& allowed = (loc && !loc->methods.empty()) 
+        ? loc->methods : conf.methods; 
+        if(!loc)
+        {
+                if(!req.getBody().empty())
+                        std::remove(req.getBody().c_str());
+                *resp = errorResponse(404, "text/html", &conf);    
+        }
+        else if (!loc->redirect.empty())
+        {
+                if(!req.getBody().empty())
+                        std::remove(req.getBody().c_str());
+                *resp = buildRedirect(loc->redirect_code, loc->redirect);    
+        }
+        else if (!is_method_allowed(method, allowed))
+        {
+                if(!req.getBody().empty())
+                        std::remove(req.getBody().c_str());
+                *resp = errorResponse(405, "text/html", &conf);
+        }
+        return loc;
+}
 
 void    WebServer::execute_methods(int fd)
 {
+        
         std::string method = _clients[fd].getRequest().getMethod();
         std::string response;
 
-        if(method == "DELETE")
-                response = Delete_method(_clients[fd]);
-        else if(method == "GET")
-                response = Get_method(_clients[fd]);
-        else if(method == "POST")
-                response = Post_method(_clients[fd]);
-        else
-                response = errorResponse(404, "text/html", &_clients[fd].getServer()->getConfig());
+
+        const LocationConfig *loc = setup_methods(_clients[fd], &response);
+        if(response.empty() && loc)
+        {
+                std::string root = (loc && !loc->root.empty()) ? loc->root : _clients[fd].getServer()->getConfig().root;
+                std::string remainder = _clients[fd].getRequest().getPath().substr(loc->path.size());
+                if (remainder.empty() || (remainder[0] != '/' && root[root.size() - 1] != '/'))
+                    remainder = "/" + remainder;
+                std::string file_path = root + remainder;
+                if(method == "DELETE")
+                        response = Delete_method(_clients[fd], loc, file_path);
+                else if(method == "GET")
+                        response = Get_method(_clients[fd], loc, file_path);
+                else if(method == "POST")
+                        response = Post_method(_clients[fd], loc, file_path);
+                else
+                        response = errorResponse(404, "text/html", &_clients[fd].getServer()->getConfig());
+        }
 
         _clients[fd].setResponse(response);
         _clients[fd].setRespLen(response.size());
