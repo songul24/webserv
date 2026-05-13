@@ -44,7 +44,7 @@ class Connection {
                 size_t                  _respLen;
                 time_t                  _last_active;
 
-                // Need it in my request parsing 😝
+                
                 Request         _request;
                 bool            _is_there_body;
                 bool            _header_parsed;
@@ -71,7 +71,7 @@ class Connection {
                 Server*         getServer() const;
                 bool            getParsed() const;
                 time_t          get_Lastactive() const;
-                // Need it in my request parsing 😝
+                
                 bool            getIsThereBody( void ) const;
                 bool            getHeaderParsed( void ) const;
                 std::string     getRawRequest( void ) const;
@@ -83,7 +83,7 @@ class Connection {
                 void    setResponse(const std::string& response);
                 void    setRespLen(size_t respLen);
                 void    setLastactive(time_t last_active);
-                  // Need it in my request parsing 😝
+                
                 void     setIsThereBody( bool t_or_f );
                 void     setHeaderParsed( bool t_or_f );
                 void     setRawRequest( std::string raw );
