@@ -73,7 +73,44 @@ void    Connection::parseRequest( const char *buf )
                 _parsed = true;
         }
 }
+// void Connection::parseRequest(const char *buf, int bytes)
+// {
+//     _raw_request.append(buf, bytes);
 
+//     if (_raw_request.find("\r\n\r\n") == std::string::npos)
+//         return;
+
+//     if (!_header_parsed)
+//     {
+//         parse_request(_raw_request, _request);
+//         if (_request.getStop())
+//             return;
+//         parse_headers(_raw_request, _request);
+//         _header_parsed = true;
+//     }
+
+//     std::string content_length = _request.getHeaders()["Content-Length"];
+//     if (!content_length.empty())
+//     {
+//         size_t body_len = (size_t)std::atoi(content_length.c_str());
+//         size_t header_end = _raw_request.find("\r\n\r\n") + 4;
+//         size_t content_received = _raw_request.size() - header_end;
+
+//         if (_request.getMaxBodySize() != 0 && body_len > _request.getMaxBodySize())
+//         {
+//             _request.setStop(true);
+//             _request.setErrorCode(413);
+//             return;
+//         }
+//         if (content_received < body_len)
+//             return;
+
+//         _request.setBody(_raw_request.substr(header_end, body_len));
+//     }
+
+//     _is_there_body = true;
+//     _parsed = true;
+// }
 
 int             Connection::getFd() const {return _fd;}
 Server*         Connection::getServer() const {return _server;}

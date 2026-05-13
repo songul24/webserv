@@ -154,7 +154,7 @@ void	Request::print( void ) const
 }
 
 
-static std::vector<std::string> split( std::string &s, char sep )
+std::vector<std::string> split( std::string &s, char sep )
 {
 	std::vector<std::string>	tokens;
 	std::string					token;
@@ -165,7 +165,7 @@ static std::vector<std::string> split( std::string &s, char sep )
 	return tokens;
 }
 
-static std::map<std::string, std::string> parseheaders_map( std::string &headers_str )
+ std::map<std::string, std::string> parseheaders_map( std::string &headers_str )
 {
 	std::map<std::string, std::string>	result;
 	std::string							line;
@@ -198,7 +198,7 @@ static std::map<std::string, std::string> parseheaders_map( std::string &headers
 	return result;
 }
 
-static int	parsemethod( std::string &method, Request &request )
+int	parsemethod( std::string &method, Request &request )
 {
 	if (method != "GET" && method != "POST" && method != "DELETE")
 		return (400);
@@ -206,7 +206,7 @@ static int	parsemethod( std::string &method, Request &request )
 	return (0);
 }
 
-static int	parsepath( std::string &path, Request &request )
+int	parsepath( std::string &path, Request &request )
 {
 	if (path.empty() || path[0] != '/')
 		return (400);
@@ -225,7 +225,7 @@ static int	parsepath( std::string &path, Request &request )
 	return (0);
 }
 
-static int	parseversion( std::string &version, Request &request )
+int	parseversion( std::string &version, Request &request )
 {
 	if (version != "HTTP/1.1" && version != "HTTP/1.0")
 		return (400);
@@ -235,7 +235,7 @@ static int	parseversion( std::string &version, Request &request )
 	return (0);
 }
 
-static int	checkheaders( Request &request )
+int	checkheaders( Request &request )
 {
 	std::map<std::string, std::string> h = request.getHeaders();
 	std::string method = request.getMethod();
@@ -261,7 +261,7 @@ static int	checkheaders( Request &request )
 }
 
 
-static void	setbody( std::string &chunk, Request &request )
+void	setbody( std::string &chunk, Request &request )
 {
 	// Premier appel : créer le fichier temporaire
 	if (request.getFile() == -2)
@@ -299,5 +299,76 @@ static void	setbody( std::string &chunk, Request &request )
 	{
 		request.closeBodyFile();
 		request.setStatus(Request::COMPLETE);
+	}
+}
+
+
+void	parse_request( std::string &buffer, Request &request )
+{
+	
+	if (request.getStatus() == Request::START || request.getStatus() == Request::REQUEST_LINE)
+	{
+		size_t pos = buffer.find(CRLF);
+		if (pos == std::string::npos)
+			return ;
+
+		std::string request_line = buffer.substr(0, pos);
+		buffer.erase(0, pos + 2);
+
+		std::vector<std::string> tokens = split(request_line, ' ');
+		if (tokens.size() != 3)
+			return (request.setError(400, "Malformed request line"));
+
+		int err = 0;
+		if ((err = parsemethod(tokens[0], request)) != 0)
+			return (request.setError(err, "Bad method"));
+		if ((err = parsepath(tokens[1], request)) != 0)
+			return (request.setError(err, "Bad path"));
+		if ((err = parseversion(tokens[2], request)) != 0)
+			return (request.setError(err, "Bad version"));
+
+		request.setStatus(Request::HEADERS);
+	}
+
+	
+	if (request.getStatus() == Request::HEADERS)
+	{
+		size_t pos = buffer.find("\r\n\r\n");
+		if (pos == std::string::npos)
+			return ;
+
+		std::string headers_str = buffer.substr(0, pos);
+		buffer.erase(0, pos + 4);
+
+		request.setHeaders(parseheaders_map(headers_str));
+
+		
+		std::map<std::string, std::string> h = request.getHeaders();
+		if (h.count("Content-Length"))
+		{
+			std::istringstream iss(h["Content-Length"]);
+			size_t cl = 0;
+			iss >> cl;
+			request.setMaxBodySize(cl);
+		}
+
+		int err = checkheaders(request);
+		if (err != 0)
+			return (request.setError(err, "Header check failed"));
+
+		if (request.getMethod() == "GET" || request.getMethod() == "DELETE")
+			return (request.setStatus(Request::COMPLETE));
+
+		if (request.getMaxBodySize() == 0)
+			return (request.setStatus(Request::COMPLETE));
+
+		request.setStatus(Request::BODY);
+	}
+
+	
+	if (request.getStatus() == Request::BODY)
+	{
+		if (!buffer.empty())
+			setbody(buffer, request);
 	}
 }
