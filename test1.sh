@@ -17,7 +17,7 @@ TOTAL=0
 
 # Configuration des ports
 PORT_MAIN=5050
-PORT_CGI=5055
+PORT_CGI=5052
 
 # Fonction pour compter les tests
 test_count() {
@@ -162,7 +162,7 @@ R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAI
 check "GET inexistant → 404" "404" "$R"
 
 # 2.4 GET avec path traversal (..)
-R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAIN/../config.conf")
+R=$(curl -s -o /dev/null -w "%{http_code}" --path-as-is --http1.0 "http://127.0.0.1:$PORT_MAIN/../config.conf")
 check "GET path traversal → 403" "403" "$R"
 
 # 2.5 GET autoindex (dossier sans index.html)
