@@ -1,6 +1,6 @@
 #include "../include/WebServer.hpp"
 
-std::string Delete_file(const std::string& url, const std::string& root, const ServerConfig& config);
+std::string Delete_file(std::string& path, const ServerConfig& config);
 
 bool    check_path(const std::string& url)
 {
@@ -20,6 +20,7 @@ bool    check_path(const std::string& url)
 
 std::string Delete_folder(const std::string& path, const ServerConfig& config)
 {
+        std::string url_path;
         if(access(path.c_str(), W_OK) != 0)
                 return errorResponse(403, "text/html", &config);
         DIR *folder = opendir(path.c_str());
@@ -29,7 +30,11 @@ std::string Delete_folder(const std::string& path, const ServerConfig& config)
         {
                 if (std::string(folder_file->d_name) == "." || std::string(folder_file->d_name) == "..")
                         continue;
-                std::string result = Delete_file(folder_file->d_name, path, config);
+                if(folder_file->d_name[0] == '/' || path[path.size() - 1] == '/')
+                        url_path = path + folder_file->d_name;
+                else
+                        url_path = path + '/' + folder_file->d_name;
+                std::string result = Delete_file(url_path, config);
                 if(result.find("HTTP/1.0 2") == std::string::npos) 
                 {
                         closedir(folder);
@@ -43,15 +48,8 @@ std::string Delete_folder(const std::string& path, const ServerConfig& config)
         return buildResponse(204, "", "text/html", NULL);
 }
 
-std::string Delete_file(const std::string& url, const std::string& root, const ServerConfig& config)
+std::string Delete_file(std::string& path, const ServerConfig& config)
 {
-        if(url.empty() || root.empty() || check_path(url))
-                return errorResponse(404, "text/html", &config);
-        std::string path;
-        if(url[0] == '/')
-                path = root + url;
-        else
-                path = root + '/' + url;
         struct stat buf;
         if(stat(path.c_str(), &buf) != 0)
                 return errorResponse(404, "text/html", &config);
@@ -80,10 +78,14 @@ const LocationConfig* find_location(const ServerConfig& config, const std::strin
 
                 if (url.compare(0, loc.path.size(), loc.path) == 0)
                 {
-                        if (loc.path.size() > bestLen)
+                        if (url.size() == loc.path.size() || url[loc.path.size()] == '/' ||
+                                loc.path[loc.path.size()-1] == '/')
                         {
-                            bestLen = loc.path.size();
-                            best = &loc;
+                                if (loc.path.size() > bestLen)
+                                {
+                                    bestLen = loc.path.size();
+                                    best = &loc;
+                                }
                         }
                 }
         }
@@ -101,22 +103,12 @@ bool is_method_allowed(const std::string& method, const std::vector<std::string>
         return false;
 }
 
-std::string    Delete_method(Connection& client)
+std::string    Delete_method(Connection& client, std::string& path)
 {
         std::string url    = client.getRequest().getPath();
         const ServerConfig config = client.getServer()->getConfig();   
         if (check_path(url))
                 return errorResponse(403, "text/html", &config);
-
-        const LocationConfig* loc = find_location(config, url); 
-        if(!loc)
-                return errorResponse(404, "text/html", &config);
-        std::string status;
-        
-        const std::vector<std::string>& allowed = (loc && !loc->methods.empty()) ? loc->methods : config.methods;     
-        if (!is_method_allowed("DELETE", allowed))
-                return errorResponse(405, "text/html", &config);
-
-        std::string root = (loc && !loc->root.empty()) ? loc->root : config.root;       
-        return Delete_file(url, root, config);
+       
+        return Delete_file(path, config);
 }

@@ -40,7 +40,7 @@ std::string     generateRandom_name()
 }
 
 
-std::string    Post_method(Connection &cnx)
+std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::string& path)
 {
         ServerConfig conf = cnx.getServer()->getConfig();
         if (!cnx.getIsThereBody())
@@ -48,25 +48,11 @@ std::string    Post_method(Connection &cnx)
         
         Request req = cnx.getRequest();
         //get extention
-        std::string extention = getExtention(req.getHeaders()["content-type"]);
+        std::string extention = getExtention(req.getHeaders()["Content-Type"]);
         if(extention.empty())
         {
                 std::remove(req.getBody().c_str());
                 return errorResponse(415, "text/html", &conf);
-        }
-        //find location + POST allowed
-        const LocationConfig* loc = find_location(conf, req.getPath());
-        if(!loc)
-        {
-                std::remove(req.getBody().c_str());
-                return errorResponse(404, "text/html", &conf);    
-        }
-        const std::vector<std::string>& allowed = (loc && !loc->methods.empty()) 
-        ? loc->methods : conf.methods;     
-        if (!is_method_allowed("POST", allowed))
-        {
-                std::remove(req.getBody().c_str());
-                return errorResponse(405, "text/html", &conf);
         }
        
         std::string root   = loc->root.empty() ? conf.root :loc->root;
@@ -82,20 +68,24 @@ std::string    Post_method(Connection &cnx)
                         std::remove(req.getBody().c_str());
                         return errorResponse(500, "text/html", &conf);
                 }
-                std::string post_path = root + req.getPath();
-                std::string cgi_path = is_cgi(conf, loc, post_path);
-                if(stat(post_path.c_str(), &buf))
+                std::string cgi_path = is_cgi(conf, loc, path);
+                std::cerr << "path: [" << path << "]" << std::endl;
+                if(stat(path.c_str(), &buf))
                 {
                          std::remove(upload_path.c_str());
                         return errorResponse(404, "text/html", &conf);
                 }
                 else if(S_ISREG(buf.st_mode) && !cgi_path.empty())
-                        return (run_cgi(cgi_path, post_path, cnx, upload_path));
+                {
+                        std::string resp = run_cgi(cgi_path, path, cnx, upload_path);
+                        std::remove(upload_path.c_str());
+                        return resp;
+                }
                 else if(S_ISDIR(buf.st_mode))
                 {
                         cgi_path.clear();
                         std::string mathced_script;
-                        cgi_path = handle_dir_cgi(conf, loc, post_path, mathced_script);
+                        cgi_path = handle_dir_cgi(conf, loc, path, mathced_script);
                         if(!cgi_path.empty())
                         {
                                 std::string resp = run_cgi(cgi_path, mathced_script, cnx, upload_path);

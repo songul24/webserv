@@ -110,22 +110,17 @@ static std::string handleDirectory(const std::string &path, const std::string &u
     return errorResponse(403, "text/html", &srv);
 }
 
-std::string  Get_method(Connection &client)
+std::string  Get_method(Connection &client, const LocationConfig* loc, std::string& path)
 {
     Request req = client.getRequest();
     ServerConfig srv = client.getServer()->getConfig(); 
     std::string uri = req.getPath();
-    const LocationConfig *loc = find_location(srv, uri);
-    const std::vector<std::string>& allowed = (loc && !loc->methods.empty()) ? loc->methods : srv.methods;     
-    if (!is_method_allowed("GET", allowed))
-            return errorResponse(405, "text/html", &srv);
 
     std::string root = (loc && !loc->root.empty()) ? loc->root : srv.root;
     if (root.empty())
         return errorResponse(500, "text/html", &srv);
     if (root[root.size() - 1] == '/')
         root.erase(root.size() - 1);
-    std::string path = root + uri;
     if (uri.find("..") != std::string::npos)
         return errorResponse(403, "text/html", &srv);
     if (!exists(path))
