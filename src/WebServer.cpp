@@ -184,13 +184,14 @@ void    WebServer::execute_methods(int fd)
         const LocationConfig *loc = setup_methods(_clients[fd], &response);
         if(response.empty() && loc)
         {
-                std::string root = (loc && !loc->root.empty()) ? loc->root : _clients[fd].getServer()->getConfig().root;
+                ServerConfig conf = _clients[fd].getServer()->getConfig(); // store it first
+                std::string root = (loc && !loc->root.empty()) ? loc->root : conf.root;
                 std::string remainder = _clients[fd].getRequest().getPath().substr(loc->path.size());
                 if (remainder.empty() || (remainder[0] != '/' && root[root.size() - 1] != '/'))
                     remainder = "/" + remainder;
                 std::string file_path = root + remainder;
                 if(method == "DELETE")
-                        response = Delete_method(_clients[fd], loc, file_path);
+                        response = Delete_method(_clients[fd], file_path);
                 else if(method == "GET")
                         response = Get_method(_clients[fd], loc, file_path);
                 else if(method == "POST")

@@ -48,7 +48,7 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
         
         Request req = cnx.getRequest();
         //get extention
-        std::string extention = getExtention(req.getHeaders()["content-type"]);
+        std::string extention = getExtention(req.getHeaders()["Content-Type"]);
         if(extention.empty())
         {
                 std::remove(req.getBody().c_str());
@@ -69,6 +69,7 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
                         return errorResponse(500, "text/html", &conf);
                 }
                 std::string cgi_path = is_cgi(conf, loc, path);
+                std::cerr << "path: [" << path << "]" << std::endl;
                 if(stat(path.c_str(), &buf))
                 {
                          std::remove(upload_path.c_str());

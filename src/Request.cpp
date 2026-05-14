@@ -5,7 +5,8 @@ std::string generate_name( void )
 {
 	static int counter = 0;
 	std::ostringstream oss;
-	oss << "/tmp/body_" << getpid() << "_" << counter++;
+	//change to this for POST!!!!!!!
+	oss << "./storage/body_" << getpid() << "_" << counter++;
 	return oss.str();
 }
 
