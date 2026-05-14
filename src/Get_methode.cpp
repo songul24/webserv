@@ -50,7 +50,7 @@ static std::string autoIndex(const std::string &path,
     while ((entry = readdir(dir)))
     {
         std::string name(entry->d_name);
-        if (name == "." || name == "..")
+        if (name == ".")//ne pas ignorer ".."
             continue;
         files.push_back(name);
     }
@@ -100,10 +100,10 @@ static std::string handleDirectory(const std::string &path, const std::string &u
     }
 
     bool autoindex;
-    if (loc != NULL)
-        autoindex = loc->autoindex;
-    else
-        autoindex = srv.autoindex;
+    if (loc != NULL && loc->autoindex)
+        autoindex = true;
+    // else
+    //     autoindex = srv.autoindex;
 
     if (autoindex)
         return autoIndex(dir_path, uri, srv);
@@ -123,6 +123,7 @@ std::string  Get_method(Connection &client, const LocationConfig* loc, std::stri
         root.erase(root.size() - 1);
     if (uri.find("..") != std::string::npos)
         return errorResponse(403, "text/html", &srv);
+    std::string path = root + uri;
     if (!exists(path))
         return errorResponse(404, "text/html", &srv);
     if (isDir(path))

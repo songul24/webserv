@@ -190,6 +190,8 @@ std::vector<std::string> split( std::string &s, char sep )
 		if (colon == std::string::npos)
 			continue ;
 		std::string key   = line.substr(0, colon);
+		for (size_t k = 0; k < key.size(); k++)
+    		key[k] = std::tolower((unsigned char)key[k]);
 		std::string value = line.substr(colon + 1);
 		size_t start = value.find_first_not_of(" \t");
 		if (start != std::string::npos)
@@ -201,6 +203,8 @@ std::vector<std::string> split( std::string &s, char sep )
 
 int	parsemethod( std::string &method, Request &request )
 {
+	if (method == "HEAD")
+		method = "GET";// a verifier
 	if (method != "GET" && method != "POST" && method != "DELETE")
 		return (400);
 	request.setMethod(method);
@@ -241,19 +245,23 @@ int	checkheaders( Request &request )
 	std::map<std::string, std::string> h = request.getHeaders();
 	std::string method = request.getMethod();
 
-	if (h.count("Transfer-Encoding"))
+	if (h.count("transfer-encoding"))
 		return (501);
-	if ((method == "GET" || method == "DELETE") && h.count("Content-Length"))
+	if ((method == "GET" || method == "DELETE") && h.count("content-length"))
 		return (400);
 	if (method == "POST")
 	{
-		if (!h.count("Content-Length"))
-			return (400);
-		std::istringstream iss(h["Content-Length"]);
+		if (!h.count("content-length"))
+		{
+			// request.setMaxBodySize(0);
+			return (0);
+			// return (400);
+		}
+		std::istringstream iss(h["content-length"]);
 		size_t cl = 0;
 		if (!(iss >> cl))
 			return (400);
-		if (cl > 0 && !h.count("Content-Type"))
+		if (cl > 0 && !h.count("content-type"))
 			return (400);
 		if (cl > request.getMaxBodySize() && request.getMaxBodySize() != 0)
 			return (413);
