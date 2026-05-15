@@ -95,7 +95,7 @@ void    WebServer::close_connection(int fd)
 
 void    WebServer::handle_client_response(int fd)
 {
-        std::cout << "Send client resp----> " << fd << std::endl;
+        std::cout << "-------Send client resp----> " << fd << std::endl;
 
         int sent_byte = _clients[fd].getSentlen();
         int total_len =  _clients[fd].getRespLen();
@@ -184,12 +184,15 @@ void    WebServer::execute_methods(int fd)
         const LocationConfig *loc = setup_methods(_clients[fd], &response);
         if(response.empty() && loc)
         {
-                ServerConfig conf = _clients[fd].getServer()->getConfig(); // store it first
+                ServerConfig conf = _clients[fd].getServer()->getConfig();
                 std::string root = (loc && !loc->root.empty()) ? loc->root : conf.root;
-                std::string remainder = _clients[fd].getRequest().getPath().substr(loc->path.size());
-                if (remainder.empty() || (remainder[0] != '/' && root[root.size() - 1] != '/'))
-                    remainder = "/" + remainder;
-                std::string file_path = root + remainder;
+                std::string uri  = _clients[fd].getRequest().getPath();
+                if (!root.empty() && root[root.size() - 1] == '/' && !uri.empty() && uri[0] == '/')
+                        uri = uri.substr(1);
+                else if (!root.empty() && root[root.size() - 1] != '/' && !uri.empty() && uri[0] != '/')
+                        root += '/';
+                std::string file_path = root + uri;
+
                 if(method == "DELETE")
                         response = Delete_method(_clients[fd], file_path);
                 else if(method == "GET")
@@ -205,25 +208,7 @@ void    WebServer::execute_methods(int fd)
         _clients[fd].setSentlen(0);
 }
 
-// void    WebServer::handle_client_request(int fd)
-// {
-//         char buf[10000];
-//         int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
-//         if(bytes <= 0)
-//                 close_connection(fd);
-//         else
-//         {
-//                 buf[bytes] = '\0';
-//                 _clients[fd].parseRequest(buf);
-//                 if(_clients[fd].getRequest().isError())
-//                         close_connection(fd);
-//                 else if(_clients[fd].getParsed())
-//                 {
-//                         execute_methods(fd);
-//                         handle_client_response(fd);
-//                 }
-//         }
-// }
+
 
 void    WebServer::handle_client_request(int fd)
 {
@@ -241,8 +226,10 @@ void    WebServer::handle_client_request(int fd)
                 int code = _clients[fd].getRequest().getError();
                 ServerConfig conf = _clients[fd].getServer()->getConfig();
                 std::string resp = errorResponse(code, "text/html", &conf);
-                send(fd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
-                close_connection(fd);
+                _clients[fd].setResponse(resp);
+                _clients[fd].setRespLen(resp.size());
+                _clients[fd].setSentlen(0);
+                handle_client_response(fd);
         }
         else if(_clients[fd].getParsed())
         {
@@ -260,7 +247,6 @@ void    WebServer::check_timeout()
                 Connection &client = it->second;
                 if (difftime(time(NULL), client.get_Lastactive()) > 60)
                 {
-                        std::cout << "HERE IN CHECKTIMEOUT______" << std::endl;
                         epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
                         _clients.erase(it++); 
                         std::cout << "timeout fd=" << fd << std::endl;
@@ -291,7 +277,7 @@ void    WebServer::runServer()
 
         while(g_run)
         {
-                std::cout << "-----4444-----------" << std::endl;
+                std::cout << "-----Epoll Loop-----------" << std::endl;
                 int n_ready = epoll_wait(_epoll_fd, events, MAX_EVENTS, 5000);
 
                 if (n_ready < 0)
@@ -313,11 +299,11 @@ void    WebServer::runServer()
                         // ── new connection ──
                         if (srv) 
                         {
-                                std::cout << "-----------0000000----- " << n_ready << std::endl;
+                                std::cout << "-----------New Connection----- " << n_ready << std::endl;
                                 handle_new_connection(srv);
                                 continue;
                         }
-                        std::cout << "-----9999-----------" << std::endl;
+
                         // ── error or hangup ──
                         if (ev & (EPOLLERR | EPOLLHUP)) 
                         {
@@ -330,7 +316,7 @@ void    WebServer::runServer()
                         // ── data ready to recv ──
                         if (ev & EPOLLIN)
                         {
-                                std::cout << "-----333-----------" << std::endl;
+                                std::cout << "-----New request-----------" << std::endl;
                                 handle_client_request(fd);
                                 if(_clients.count(fd))
                                         _clients[fd].setLastactive(time(NULL));
@@ -339,7 +325,7 @@ void    WebServer::runServer()
                         // ── ready to send ──
                         if (ev & EPOLLOUT)
                         {
-                                std::cout << "----------------" << std::endl;
+                                std::cout << "-------Finish sending response---------" << std::endl;
                                 handle_client_response(fd);
                                 if(_clients.count(fd))
                                         _clients[fd].setLastactive(time(NULL));
@@ -347,5 +333,5 @@ void    WebServer::runServer()
                 }
                 check_timeout();
         }
-        std::cout << "-----88888-----------" << std::endl;
+        std::cout << "-----End Of loop-----------" << std::endl;
 }

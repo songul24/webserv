@@ -47,12 +47,14 @@ Connection::~Connection()
  
 void    Connection::parseRequest( const char *buf )
 {
-        _raw_request += buf;
+        // _raw_request += buf;
+        _raw_request += std::string(buf);  //malika
  
         // Attendre d'avoir au moins les headers complets
         if (_raw_request.find("\r\n\r\n") == std::string::npos)
                 return ;
- 
+        if (_parsed)  // malika
+                return;
         // parse_request gère tout : request line + headers + body
         // Elle utilise _request._status pour savoir où elle en est
         parse_request(_raw_request, _request);

@@ -94,7 +94,7 @@ static std::string handleDirectory(const std::string &path, const std::string &u
         {
             std::string cgiPath = is_cgi(srv, loc, full);
             if (!cgiPath.empty())
-                return run_cgi(cgiPath, full, client, "");
+                return run_cgi(cgiPath, full, client, "", loc);
             return buildResponse(200, read_File(full), mimeType(full), NULL);
         }
     }
@@ -129,7 +129,7 @@ std::string  Get_method(Connection &client, const LocationConfig* loc, std::stri
         return handleDirectory(path, uri, client, loc);
     std::string cgiPath = is_cgi(srv, loc, path);
     if (!cgiPath.empty())
-        return run_cgi(cgiPath, path, client, "");
+        return run_cgi(cgiPath, path, client, "", loc);
     return buildResponse(200, read_File(path), mimeType(path), NULL);
 }
 

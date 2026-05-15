@@ -24,19 +24,10 @@ std::string     getExtention(const std::string& type)
 
 std::string     generateRandom_name()
 {
-        std::string name;
-        std::string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        int pos;
-
-        std::srand(time(NULL));
-        int r = (rand() % 3) + 4;
-
-        for(int i = 0; i < r; i++)
-        {
-            pos = rand() % str.size();
-            name.push_back(str[pos]);    
-        }
-        return name;
+        static int counter = 0;
+        std::ostringstream oss;
+        oss << getpid() << "_" << counter++;
+        return oss.str();
 }
 
 
@@ -77,7 +68,7 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
                 }
                 else if(S_ISREG(buf.st_mode) && !cgi_path.empty())
                 {
-                        std::string resp = run_cgi(cgi_path, path, cnx, upload_path);
+                        std::string resp = run_cgi(cgi_path, path, cnx, upload_path, loc);
                         std::remove(upload_path.c_str());
                         return resp;
                 }
@@ -88,7 +79,7 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
                         cgi_path = handle_dir_cgi(conf, loc, path, mathced_script);
                         if(!cgi_path.empty())
                         {
-                                std::string resp = run_cgi(cgi_path, mathced_script, cnx, upload_path);
+                                std::string resp = run_cgi(cgi_path, mathced_script, cnx, upload_path, loc);
                                 std::remove(upload_path.c_str());
                                 return resp;
                         }

@@ -261,47 +261,94 @@ int	checkheaders( Request &request )
 	return (0);
 }
 
-
-void	setbody( std::string &chunk, Request &request )
+void setbody(std::string &chunk, Request &request)
 {
-	// Premier appel : créer le fichier temporaire
-	if (request.getFile() == -2)
-	{
-		std::string filename = generate_name();
-		int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
-		if (fd == -1)
-		{
-			request.setError(500, "Body file open failure");
-			return ;
-		}
-		request.setBodyFile(filename, fd);
-	}
+    if (request.getFile() == -2)
+    {
+        std::string filename = generate_name();
+        int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
+        if (fd == -1) { request.setError(500, "Body file open failure"); return; }
+        request.setBodyFile(filename, fd);
+    }
 
-	size_t bytes_read = request.getBytesRead();
-	size_t max        = request.getMaxBodySize();
+    // Get Content-Length from headers
+    size_t content_length = 0;
+    std::map<std::string, std::string> headers = request.getHeaders();
+    std::map<std::string, std::string>::iterator it = headers.find("Content-Length");
+    if (it != headers.end())
+    {
+	std::stringstream ss(it->second);
+unsigned long content_length;
+ss >> content_length;
+    }
+        // content_length = std::stoul(it->second);
 
-	// Trop de données
-	if (bytes_read + chunk.size() > max)
-	{
-		request.setError(413, "Body larger than Content-Length");
-		return ;
-	}
+    size_t bytes_read = request.getBytesRead();
+    size_t max_body   = request.getMaxBodySize();
 
-	if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
-	{
-		request.setError(500, "Body write() failure");
-		return ;
-	}
+    // 413 if body exceeds max allowed
+    if (bytes_read + chunk.size() > max_body)
+    {
+        request.setError(413, "Body too large");
+        return;
+    }
 
-	request.addBytesRead(chunk.size());
+    if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
+    {
+        request.setError(500, "Body write() failure");
+        return;
+    }
 
-	// Body complet
-	if (request.getBytesRead() >= max)
-	{
-		request.closeBodyFile();
-		request.setStatus(Request::COMPLETE);
-	}
+    request.addBytesRead(chunk.size());
+
+    // Complete when we've read exactly Content-Length bytes
+    if (request.getBytesRead() >= content_length)
+    {
+        request.closeBodyFile();
+        request.setStatus(Request::COMPLETE);
+    }
 }
+
+// void	setbody( std::string &chunk, Request &request )
+// {
+// 	// Premier appel : créer le fichier temporaire
+// 	if (request.getFile() == -2)
+// 	{
+// 		std::string filename = generate_name();
+// 		int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
+// 		if (fd == -1)
+// 		{
+// 			request.setError(500, "Body file open failure");
+// 			return ;
+// 		}
+// 		request.setBodyFile(filename, fd);
+// 	}
+
+// 	size_t bytes_read = request.getBytesRead();
+// 	size_t max        = request.getMaxBodySize();
+
+// 	// Trop de données
+// 	if (bytes_read + chunk.size() > max)
+// 	{
+// 		request.setError(413, "Body larger than Content-Length");
+// 		return ;
+// 	}
+
+// 	if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
+// 	{
+// 		request.setError(500, "Body write() failure");
+// 		return ;
+// 	}
+
+// 	request.addBytesRead(chunk.size());
+
+// 	// Body complet
+// 	if (request.getBytesRead() >= max)
+// 	{
+// 		request.closeBodyFile();
+// 		request.setStatus(Request::COMPLETE);
+// 	}
+// }
 
 
 void	parse_request( std::string &buffer, Request &request )
