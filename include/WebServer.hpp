@@ -38,7 +38,6 @@ class WebServer
 };
 
 
-
 int             set_nonblock(int fd);
 int             add_to_epoll(int epfd, int fd, uint32_t events);
 int             mod_to_epoll(int epfd, int fd, uint32_t events);

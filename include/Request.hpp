@@ -40,6 +40,7 @@ class Request
 		t_status							status;
 		int									error;
 		int									file;		// fd fichier temporaire (-2 = pas ouvert)
+		size_t								content_lenghth;
 
 	public:
 		Request( void );
@@ -59,6 +60,7 @@ class Request
 		void	setBodyFile( std::string filename, int fd );
 		void	addBytesRead( size_t n );
 		void	closeBodyFile( void );
+		void	setcontent_lenghth( size_t cl );
 
 		// Getters
 		std::string							getMethod( void ) const;
@@ -72,6 +74,7 @@ class Request
 		t_status							getStatus( void ) const;
 		int									getError( void ) const;
 		int									getFile( void ) const;
+		size_t								getContentLength( void ) const;
 		bool								isComplete( void ) const;
 		bool								isError( void ) const;
 

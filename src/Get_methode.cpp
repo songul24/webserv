@@ -77,7 +77,8 @@ static std::string handleDirectory(const std::string &path, const std::string &u
     ServerConfig srv = client.getServer()->getConfig();
 
     // Normaliser le path avec slash final pour la recherche des fichiers
-    std::string dir_path = path;
+    std::string dir_path;
+    dir_path = path;
     if (!dir_path.empty() && dir_path[dir_path.size() - 1] != '/')
         dir_path += "/";
 
@@ -114,6 +115,7 @@ std::string  Get_method(Connection &client, const LocationConfig* loc, std::stri
 {
     Request req = client.getRequest();
     ServerConfig srv = client.getServer()->getConfig(); 
+    // req.setMaxBodySize(srv.max_body_size);
     std::string uri = req.getPath();
 
     std::string root = (loc && !loc->root.empty()) ? loc->root : srv.root;
@@ -123,7 +125,7 @@ std::string  Get_method(Connection &client, const LocationConfig* loc, std::stri
         root.erase(root.size() - 1);
     if (uri.find("..") != std::string::npos)
         return errorResponse(403, "text/html", &srv);
-    std::string path = root + uri;
+    path = root + uri;
     if (!exists(path))
         return errorResponse(404, "text/html", &srv);
     if (isDir(path))

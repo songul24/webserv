@@ -225,6 +225,32 @@ void    WebServer::execute_methods(int fd)
 //         }
 // }
 
+// void    WebServer::handle_client_request(int fd)
+// {
+//         char buf[10000];
+//         int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
+//         if(bytes <= 0)
+//         {
+//                 close_connection(fd);
+//                 return ;
+//         }
+//         buf[bytes] = '\0';
+//         _clients[fd].parseRequest(buf);
+//         if(_clients[fd].getRequest().isError())
+//         {
+//                 int code = _clients[fd].getRequest().getError();
+//                 ServerConfig conf = _clients[fd].getServer()->getConfig();
+//                 std::string resp = errorResponse(code, "text/html", &conf);
+//                 send(fd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
+//                 close_connection(fd);
+//         }
+//         else if(_clients[fd].getParsed())
+//         {
+//                 execute_methods(fd);
+//                 handle_client_response(fd);
+//         }
+// }
+
 void    WebServer::handle_client_request(int fd)
 {
         char buf[10000];
@@ -241,8 +267,10 @@ void    WebServer::handle_client_request(int fd)
                 int code = _clients[fd].getRequest().getError();
                 ServerConfig conf = _clients[fd].getServer()->getConfig();
                 std::string resp = errorResponse(code, "text/html", &conf);
-                send(fd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
-                close_connection(fd);
+                _clients[fd].setResponse(resp);
+                _clients[fd].setRespLen(resp.size());
+                _clients[fd].setSentlen(0);
+                handle_client_response(fd);
         }
         else if(_clients[fd].getParsed())
         {

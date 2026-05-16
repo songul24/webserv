@@ -21,12 +21,14 @@ int Configfile::validatePort(int port) {
 }
 
 size_t Configfile::parseBodySize(const std::string& value) {
+    
     if (value.empty())
         configError("Invalid max_client_body_size value");
 
     std::string digits = value;
     size_t multiplier = 1;
     char last = value[value.size() - 1];
+    
 
     if (last == 'M' || last == 'm') {
         multiplier = 1024 * 1024;
@@ -37,15 +39,20 @@ size_t Configfile::parseBodySize(const std::string& value) {
     } else if (last == 'G' || last == 'g') {
         multiplier = 1024 * 1024 * 1024;
         digits = value.substr(0, value.size() - 1);
+    } else {
     }
+    
+    
     for(size_t i = 0; i < digits.size(); i++) {
         if (!isdigit(digits[i]))
             configError("Invalid max_client_body_size value: " + value);
     }
+    
     int n = std::atoi(digits.c_str());
-    if (n <= 0)
-        configError("Invalid max_client_body_size value: " + value);
-    return (size_t)n * multiplier;
+    
+    size_t result = (size_t)n * multiplier;
+    
+    return result;
 }
 
 std::string Configfile::readFile(const std::string& filename) {

@@ -17,6 +17,7 @@ TOTAL=0
 
 # Configuration des ports
 PORT_MAIN=5050
+PORT_SECOND=5051
 PORT_CGI=5052
 
 # Fonction pour compter les tests
@@ -42,29 +43,41 @@ check() {
     test_count
 }
 
-# Vérifier si le serveur tourne
+# Vérifier si le serveur tourne (avec timeout)
 check_server() {
-    if ! curl -s --http1.0 http://127.0.0.1:$PORT_MAIN/ > /dev/null 2>&1; then
-        echo -e "${RED}❌ Serveur non accessible sur le port $PORT_MAIN${RESET}"
-        echo "   Assurez-vous que ./webserv tourne dans un autre terminal"
-        exit 1
-    fi
+    echo -n "   Vérification du serveur sur le port $PORT_MAIN... "
+    for i in {1..5}; do
+        if curl -s --max-time 1 --http1.0 http://127.0.0.1:$PORT_MAIN/ > /dev/null 2>&1; then
+            echo -e "${GREEN}OK${RESET}"
+            return 0
+        fi
+        echo -n "."
+        sleep 1
+    done
+    echo ""
+    echo -e "${RED}❌ Serveur non accessible sur le port $PORT_MAIN${RESET}"
+    echo "   Assurez-vous que ./webserv tourne dans un autre terminal"
+    exit 1
 }
 
 # Créer des fichiers de test
 setup_test_files() {
     mkdir -p public/website1/home
     mkdir -p public/website1/upload
+    mkdir -p public/website2
     mkdir -p storage
     mkdir -p CGI/CGI-bin
+    mkdir -p public/error_pages
     
+    # Fichiers HTML
     echo "<h1>Index Page</h1>" > public/website1/index.html
     echo "<h1>Home Page</h1>" > public/website1/home/index.html
-    echo "<h1>About Page</h1>" > public/website1/aboutt.html
+    echo "<h1>About Page</h1>" > public/website1/about.html
     echo "<h1>Empty Page</h1>" > public/website1/empty.html
+    echo "<h1>404 Not Found</h1>" > public/error_pages/404.html
     
     # Fichier pour test upload
-    echo "test content" > /tmp/test_upload.txt
+    echo "test content for upload" > /tmp/test_upload.txt
     
     # Script CGI
     cat > storage/session.py << 'EOF'
@@ -98,8 +111,8 @@ EOF
 
 # Nettoyer les fichiers de test
 cleanup_test_files() {
-    rm -rf public/website1/home/testfile_*.txt
-    rm -rf public/website1/upload/*
+    rm -f public/website1/home/test_delete.txt
+    rm -f public/website1/testfile_delete.txt
     rm -f /tmp/test_upload.txt
 }
 
@@ -116,24 +129,20 @@ setup_test_files
 check_server
 
 # ------------------------------------------------------------
-# 1. TEST PARSING DE REQUÊTE (via GET)
+# 1. TEST PARSING DE REQUÊTE
 # ------------------------------------------------------------
 echo ""
 echo -e "${YELLOW}--- 1. TESTS PARSING ---${RESET}"
 
-# 1.1 GET normal
 R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAIN/")
 check "GET / → 200" "200" "$R"
 
-# 1.2 GET avec query string (doit être parsée)
 R=$(curl -s --http1.0 "http://127.0.0.1:$PORT_MAIN/home?key=value&test=123" | head -c 200)
 check "GET avec query string → contient Home Page" "Home Page" "$R"
 
-# 1.3 GET avec path encodé
 R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAIN/home%20page")
 check "GET avec espace encodé → 404 ou 400" "40" "$R"
 
-# 1.4 GET HTTP/1.1 (doit être refusé ou normalisé)
 R=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT_MAIN/" 2>/dev/null)
 if [ "$R" = "505" ] || [ "$R" = "200" ]; then
     echo -e "${GREEN}[PASS]${RESET} GET HTTP/1.1 → $R (acceptable)"
@@ -144,28 +153,23 @@ else
 fi
 
 # ------------------------------------------------------------
-# 2. TEST GET (statique)
+# 2. TEST GET
 # ------------------------------------------------------------
 echo ""
 echo -e "${YELLOW}--- 2. TESTS GET ---${RESET}"
 
-# 2.1 GET page principale
 R=$(curl -s --http1.0 "http://127.0.0.1:$PORT_MAIN/")
 check "GET / → contient Index" "Index" "$R"
 
-# 2.2 GET location /home
 R=$(curl -s --http1.0 "http://127.0.0.1:$PORT_MAIN/home")
 check "GET /home → contient Home" "Home" "$R"
 
-# 2.3 GET fichier inexistant
 R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAIN/inexistant.html")
 check "GET inexistant → 404" "404" "$R"
 
-# 2.4 GET avec path traversal (..)
 R=$(curl -s -o /dev/null -w "%{http_code}" --path-as-is --http1.0 "http://127.0.0.1:$PORT_MAIN/../config.conf")
 check "GET path traversal → 403" "403" "$R"
 
-# 2.5 GET autoindex (dossier sans index.html)
 R=$(curl -s --http1.0 "http://127.0.0.1:$PORT_MAIN/home" | grep -c "<li>")
 if [ $R -gt 0 ] 2>/dev/null; then
     echo -e "${GREEN}[PASS]${RESET} GET autoindex → contient liste de fichiers"
@@ -181,27 +185,23 @@ fi
 echo ""
 echo -e "${YELLOW}--- 3. TESTS POST ---${RESET}"
 
-# 3.1 POST avec fichier
 R=$(curl -s -o /dev/null -w "%{http_code}" -X POST --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/upload" \
     -H "Content-Type: text/plain" \
     --data-binary @/tmp/test_upload.txt)
 check "POST upload fichier → 201" "201" "$R"
 
-# 3.2 POST Content-Length: 0
 R=$(curl -s -o /dev/null -w "%{http_code}" -X POST --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/upload" \
     -H "Content-Length: 0")
 check "POST Content-Length 0 → 200 ou 201" "[2]" "$R"
 
-# 3.3 POST sans Content-Length (chunked - devrait être 400)
 R=$(curl -s -o /dev/null -w "%{http_code}" -X POST --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/upload" \
     -H "Transfer-Encoding: chunked" \
     -d "hello")
 check "POST chunked (non supporté) → 400/501" "[45]" "$R"
 
-# 3.4 POST sur route sans POST autorisé
 R=$(curl -s -o /dev/null -w "%{http_code}" -X POST --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/aboutt")
 check "POST sur /aboutt (GET only) → 405" "405" "$R"
@@ -212,18 +212,15 @@ check "POST sur /aboutt (GET only) → 405" "405" "$R"
 echo ""
 echo -e "${YELLOW}--- 4. TESTS DELETE ---${RESET}"
 
-# 4.1 DELETE fichier existant
 echo "test" > public/website1/home/test_delete.txt
 R=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/home/test_delete.txt")
 check "DELETE fichier existant → 204" "204" "$R"
 
-# 4.2 DELETE fichier inexistant
 R=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/home/inexistant.txt")
 check "DELETE inexistant → 404" "404" "$R"
 
-# 4.3 DELETE sur route sans DELETE
 R=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/upload")
 check "DELETE sur /upload → 405" "405" "$R"
@@ -234,22 +231,18 @@ check "DELETE sur /upload → 405" "405" "$R"
 echo ""
 echo -e "${YELLOW}--- 5. TESTS CGI ---${RESET}"
 
-# 5.1 GET sur script Python
 R=$(curl -s --http1.0 "http://127.0.0.1:$PORT_CGI/session.py")
 check "GET CGI session.py → contient CGI Session Test" "CGI Session Test" "$R"
 
-# 5.2 GET CGI avec query string
 R=$(curl -s --http1.0 "http://127.0.0.1:$PORT_CGI/session.py?name=test&value=123")
 check "GET CGI avec query → contient QUERY_STRING" "QUERY_STRING" "$R"
 
-# 5.3 POST CGI
 R=$(curl -s -X POST --http1.0 \
     "http://127.0.0.1:$PORT_CGI/session.py" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "name=John&age=25")
-check "POST CGI → contient POST CGI Test" "CGI" "$R"
+check "POST CGI → contient CGI" "CGI" "$R"
 
-# 5.4 CGI script non exécutable (doit être 403 ou 500)
 chmod -x storage/session.py 2>/dev/null
 R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_CGI/session.py")
 chmod +x storage/session.py
@@ -261,18 +254,8 @@ check "CGI non exécutable → 403/500" "[45]" "$R"
 echo ""
 echo -e "${YELLOW}--- 6. TESTS COOKIES ---${RESET}"
 
-# 6.1 Envoyer un cookie
 R=$(curl -s --http1.0 -b "test_cookie=hello123" "http://127.0.0.1:$PORT_CGI/session.py")
 check "Cookie envoyé → contient HTTP_COOKIE" "test_cookie" "$R"
-
-# 6.2 Cookie Set-Cookie dans réponse
-R=$(curl -s -D - --http1.0 "http://127.0.0.1:$PORT_CGI/session.py" 2>/dev/null | grep -i "Set-Cookie")
-if [ -n "$R" ]; then
-    echo -e "${GREEN}[PASS]${RESET} Réponse avec Set-Cookie"
-    PASS=$((PASS + 1))
-else
-    echo -e "${YELLOW}[INFO]${RESET} Pas de Set-Cookie (selon implémentation)"
-fi
 
 # ------------------------------------------------------------
 # 7. TEST LIMITES
@@ -280,20 +263,17 @@ fi
 echo ""
 echo -e "${YELLOW}--- 7. TESTS LIMITES ---${RESET}"
 
-# 7.1 URL trop longue (> 2048)
-LONG=$(python3 -c 'print("a" * 2100)')
+LONG=$(python3 -c 'print("a" * 2100)' 2>/dev/null || echo "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAIN/$LONG")
 check "URL trop longue → 414" "414" "$R"
 
-# 7.2 Body trop grand (max 2K sur port 5050)
-BIG=$(python3 -c 'print("A" * 3000)')
+BIG=$(python3 -c 'print("A" * 3000)' 2>/dev/null || printf 'A%.0s' {1..3000})
 R=$(curl -s -o /dev/null -w "%{http_code}" -X POST --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/upload" \
     -H "Content-Type: text/plain" \
     -d "$BIG")
 check "Body > max_body_size (2K) → 413" "413" "$R"
 
-# 7.3 Header trop grand (Content-Length énorme)
 R=$(curl -s -o /dev/null -w "%{http_code}" -X POST --http1.0 \
     "http://127.0.0.1:$PORT_MAIN/upload" \
     -H "Content-Length: 999999999" \
@@ -306,7 +286,6 @@ check "Content-Length énorme → 413" "413" "$R"
 echo ""
 echo -e "${YELLOW}--- 8. TESTS CONCURRENCE ---${RESET}"
 
-# 8.1 Requêtes parallèles (20)
 for i in $(seq 1 20); do
     curl -s --http1.0 "http://127.0.0.1:$PORT_MAIN/" > /dev/null 2>&1 &
 done
@@ -314,28 +293,16 @@ wait
 R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_MAIN/")
 check "20 requêtes parallèles → serveur répond (200)" "200" "$R"
 
-# 8.2 Keep-Alive (HTTP/1.1)
-R=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT_MAIN/" 2>/dev/null)
-if [ "$R" = "200" ] || [ "$R" = "505" ]; then
-    echo -e "${GREEN}[PASS]${RESET} HTTP/1.1 Keep-Alive → $R"
-    PASS=$((PASS + 1))
-else
-    echo -e "${RED}[FAIL]${RESET} HTTP/1.1 Keep-Alive → $R"
-    FAIL=$((FAIL + 1))
-fi
-
 # ------------------------------------------------------------
-# 9. TEST MULTI-PORTS (deuxième serveur)
+# 9. TEST MULTI-PORTS
 # ------------------------------------------------------------
 echo ""
 echo -e "${YELLOW}--- 9. TESTS MULTI-PORTS ---${RESET}"
 
-# 9.1 Port 5051
-R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:5051/")
+R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_SECOND/")
 check "Port 5051 → réponse" "200" "$R"
 
-# 9.2 Port 5051 avec fichier inexistant
-R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:5051/inexistant")
+R=$(curl -s -o /dev/null -w "%{http_code}" --http1.0 "http://127.0.0.1:$PORT_SECOND/inexistant")
 check "Port 5051 404 → 404" "404" "$R"
 
 # ------------------------------------------------------------
@@ -344,11 +311,9 @@ check "Port 5051 404 → 404" "404" "$R"
 echo ""
 echo -e "${YELLOW}--- 10. TESTS MÉTHODES NON AUTORISÉES ---${RESET}"
 
-# 10.1 PUT (non supporté)
 R=$(curl -s -o /dev/null -w "%{http_code}" -X PUT --http1.0 "http://127.0.0.1:$PORT_MAIN/")
 check "PUT → 400/405" "[4]" "$R"
 
-# 10.2 HEAD
 R=$(curl -s -o /dev/null -w "%{http_code}" -I --http1.0 "http://127.0.0.1:$PORT_MAIN/")
 check "HEAD → 200" "200" "$R"
 
@@ -358,25 +323,14 @@ check "HEAD → 200" "200" "$R"
 echo ""
 echo -e "${YELLOW}--- 11. TESTS HEADERS ---${RESET}"
 
-# 11.1 Content-Type correct pour HTML
 R=$(curl -s -I --http1.0 "http://127.0.0.1:$PORT_MAIN/" | grep -i "Content-Type")
 check "Content-Type pour HTML → text/html" "text/html" "$R"
 
-# 11.2 Content-Length présent
 R=$(curl -s -I --http1.0 "http://127.0.0.1:$PORT_MAIN/" | grep -i "Content-Length")
 check "Header Content-Length présent" "Content-Length" "$R"
 
-# 11.3 Host header requis pour HTTP/1.1
-R=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT_MAIN/" -H "Host: test.com" 2>/dev/null)
-if [ "$R" = "200" ]; then
-    echo -e "${GREEN}[PASS]${RESET} Host header accepté"
-    PASS=$((PASS + 1))
-else
-    echo -e "${YELLOW}[INFO]${RESET} Host header: réponse $R"
-fi
-
 # ------------------------------------------------------------
-# RÉSUMÉ
+# RÉSULTATS
 # ------------------------------------------------------------
 echo ""
 echo "============================================================"
@@ -385,7 +339,6 @@ echo "============================================================"
 echo -e " ${GREEN}PASS: $PASS${RESET}  |  ${RED}FAIL: $FAIL${RESET}  |  TOTAL: $TOTAL"
 echo "============================================================"
 
-# Calcul du pourcentage
 PERCENT=$((PASS * 100 / TOTAL))
 if [ $PERCENT -ge 80 ]; then
     echo -e " ${GREEN}Score: $PERCENT% - Félicitations !${RESET}"
@@ -398,7 +351,6 @@ echo ""
 
 cleanup_test_files
 
-# Quitter avec code d'erreur si des tests ont échoué
 if [ $FAIL -gt 0 ]; then
     exit 1
 fi

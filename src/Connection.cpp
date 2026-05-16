@@ -44,34 +44,33 @@ Connection::~Connection()
         // }
 }
 
- 
-void    Connection::parseRequest( const char *buf )
+void Connection::parseRequest(const std::string& data)  // ← Changé de const char* à const std::string&
 {
-        _raw_request += buf;
+    _raw_request += data;  // ← Plus de problème de \0
+    if(_parsed)
+        return;
+    
+    size_t header_end = _raw_request.find("\r\n\r\n");
+    if (header_end == std::string::npos)
+        return;
  
-        // Attendre d'avoir au moins les headers complets
-        if (_raw_request.find("\r\n\r\n") == std::string::npos)
-                return ;
+    _request.setMaxBodySize(_server->getConfig().max_body_size);    
+    parse_request(_raw_request, _request);
+    
+    _raw_request.erase(0, header_end + 4); 
+    if (_request.isError())
+    {
+        std::cerr << "Parse error: " << _request.getError() << std::endl;
+        _parsed = true;
+        return;
+    }
  
-        // parse_request gère tout : request line + headers + body
-        // Elle utilise _request._status pour savoir où elle en est
-        parse_request(_raw_request, _request);
- 
-        // Si erreur pendant le parsing
-        if (_request.isError())
-        {
-                std::cerr << "Parse error: " << _request.getError() << std::endl;
-                _parsed = true;
-                return ;
-        }
- 
-        // Requête complète
-        if (_request.isComplete())
-        {
-                if (!_request.getBody().empty())
-                        _is_there_body = true;
-                _parsed = true;
-        }
+    if (_request.isComplete())
+    {
+        if (!_request.getBody().empty())
+            _is_there_body = true;
+        _parsed = true;
+    }
 }
 // void Connection::parseRequest(const char *buf, int bytes)
 // {
@@ -123,7 +122,8 @@ bool            Connection::getIsThereBody( void ) const {return _is_there_body;
 bool            Connection::getHeaderParsed( void ) const {return _header_parsed;}
 std::string     Connection::getRawRequest( void ) const {return _raw_request;}
 Request         Connection::getRequest(void) const  {return _request;}
-
+// const std::string& Connection::getRawRequestRef( void ) const {return _raw_request;}
+const Request&  Connection::getRequestRef(void) const {return _request;}
 
 
 void            Connection::setSentlen(size_t sentLen) {_sentLen = sentLen;}

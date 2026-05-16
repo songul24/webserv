@@ -61,7 +61,7 @@ class Connection {
 		~Connection();
                 
                 // The parse request method :)
-                void            parseRequest( const char *buf );
+                void            parseRequest(const std::string& data);
 
                 //getters
                 int             getFd() const;
@@ -76,6 +76,7 @@ class Connection {
                 bool            getHeaderParsed( void ) const;
                 std::string     getRawRequest( void ) const;
                 Request         getRequest(void) const;
+                const Request&  getRequestRef(void) const;
 
                 //setters
                 void    setSentlen(size_t sentLen);

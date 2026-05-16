@@ -22,7 +22,8 @@ Request::Request( void ) :
 	bytes_read(0),
 	status(START),
 	error(0),
-	file(-2)
+	file(-2),
+	content_lenghth(0)
 {}
 
 Request::Request( const Request &old ) :
@@ -36,7 +37,8 @@ Request::Request( const Request &old ) :
 	bytes_read(old.bytes_read),
 	status(old.status),
 	error(old.error),
-	file(-2)
+	file(-2),
+	content_lenghth(old.content_lenghth)
 {}
 
 Request &Request::operator=( const Request &old )
@@ -60,6 +62,7 @@ Request &Request::operator=( const Request &old )
 		status        = old.status;
 		error         = old.error;
 		file          = old.file;
+		content_lenghth = old.content_lenghth;
 	}
 	return (*this);
 }
@@ -82,6 +85,7 @@ void	Request::setQuery( std::string q )        { query = q; }
 void	Request::setHeaders( std::map<std::string, std::string> h ) { headers = h; }
 void	Request::setMaxBodySize( size_t m )       { max_body_size = m; }
 void	Request::setStatus( t_status s )          { status = s; }
+void	Request::setcontent_lenghth( size_t cl ) { content_lenghth = cl; }
 
 void	Request::setBodyFile( std::string filename, int fd )
 {
@@ -136,6 +140,7 @@ int									Request::getError( void ) const   { return error; }
 int									Request::getFile( void ) const    { return file; }
 bool								Request::isComplete( void ) const { return status == COMPLETE; }
 bool								Request::isError( void ) const    { return status == ERROR; }
+size_t								Request::getContentLength( void ) const { return content_lenghth; }
 
 
 void	Request::print( void ) const
@@ -232,7 +237,7 @@ int	parsepath( std::string &path, Request &request )
 
 int	parseversion( std::string &version, Request &request )
 {
-	if (version != "HTTP/1.1" && version != "HTTP/1.0")
+	if (version != "HTTP/1.0" && version != "HTTP/1.1")
 		return (400);
 	// if (version == "HTTP/1.0")
 	// 	return (505);
@@ -249,135 +254,172 @@ int	checkheaders( Request &request )
 		return (501);
 	if ((method == "GET" || method == "DELETE") && h.count("content-length"))
 		return (400);
+	// std::cerr << "=== checkheaders DEBUG ===" << std::endl;
+    // std::cerr << "Method: " << method << std::endl;
+    // std::cerr << "max_body_size in Request: " << request.getMaxBodySize() << std::endl;
 	if (method == "POST")
 	{
 		if (!h.count("content-length"))
 		{
-			// request.setMaxBodySize(0);
-			return (0);
+			 request.setcontent_lenghth(0);
+        	return (0);
 			// return (400);
 		}
 		std::istringstream iss(h["content-length"]);
 		size_t cl = 0;
 		if (!(iss >> cl))
 			return (400);
-		if (cl > 0 && !h.count("content-type"))
-			return (400);
+		request.setcontent_lenghth(cl);
+		if(cl == 0)
+		{
+			// request.setStatus(Request::COMPLETE);
+			return (0);
+		}
 		if (cl > request.getMaxBodySize() && request.getMaxBodySize() != 0)
 			return (413);
+		if (!h.count("content-type"))
+			return (400);
 	}
 	return (0);
 }
 
-
-void	setbody( std::string &chunk, Request &request )
+void setbody( std::string &chunk, Request &request )
 {
-	// Premier appel : créer le fichier temporaire
-	if (request.getFile() == -2)
-	{
-		std::string filename = generate_name();
-		int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
-		if (fd == -1)
-		{
-			request.setError(500, "Body file open failure");
-			return ;
-		}
-		request.setBodyFile(filename, fd);
-	}
+    if (request.getFile() == -2)
+    {
+        std::string filename = generate_name();
+        int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
+        if (fd == -1)
+        {
+            request.setError(500, "Body file open failure");
+            return;
+        }
+        request.setBodyFile(filename, fd);
+    }
 
-	size_t bytes_read = request.getBytesRead();
-	size_t max        = request.getMaxBodySize();
+    size_t bytes_read = request.getBytesRead();
+    size_t max = request.getMaxBodySize();
+    size_t content_length = request.getContentLength();
 
-	// Trop de données
-	if (bytes_read + chunk.size() > max)
-	{
-		request.setError(413, "Body larger than Content-Length");
-		return ;
-	}
+    if (bytes_read + chunk.size() > max && max != 0)
+    {
+        request.setError(413, "Body exceeds max body size");
+        return;
+    }
 
-	if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
-	{
-		request.setError(500, "Body write() failure");
-		return ;
-	}
+    if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
+    {
+        request.setError(500, "Body write() failure");
+        return;
+    }
 
-	request.addBytesRead(chunk.size());
+    request.addBytesRead(chunk.size());
+    chunk.clear();
 
-	// Body complet
-	if (request.getBytesRead() >= max)
-	{
-		request.closeBodyFile();
-		request.setStatus(Request::COMPLETE);
-	}
+    if (request.getBytesRead() >= content_length)
+    {
+        request.closeBodyFile();
+        request.setStatus(Request::COMPLETE);
+    }
 }
 
 
-void	parse_request( std::string &buffer, Request &request )
+void parse_request( std::string &buffer, Request &request )
 {
-	
-	if (request.getStatus() == Request::START || request.getStatus() == Request::REQUEST_LINE)
-	{
-		size_t pos = buffer.find(CRLF);
-		if (pos == std::string::npos)
-			return ;
+    if (request.getStatus() == Request::START || request.getStatus() == Request::REQUEST_LINE)
+    {
+        size_t pos = buffer.find(CRLF);
+        if (pos == std::string::npos)
+            return;
 
-		std::string request_line = buffer.substr(0, pos);
-		buffer.erase(0, pos + 2);
+        std::string request_line = buffer.substr(0, pos);
+        buffer.erase(0, pos + 2);
 
-		std::vector<std::string> tokens = split(request_line, ' ');
-		if (tokens.size() != 3)
-			return (request.setError(400, "Malformed request line"));
+        std::vector<std::string> tokens = split(request_line, ' ');
+        if (tokens.size() != 3)
+            return (request.setError(400, "Malformed request line"));
 
-		int err = 0;
-		if ((err = parsemethod(tokens[0], request)) != 0)
-			return (request.setError(err, "Bad method"));
-		if ((err = parsepath(tokens[1], request)) != 0)
-			return (request.setError(err, "Bad path"));
-		if ((err = parseversion(tokens[2], request)) != 0)
-			return (request.setError(err, "Bad version"));
+        int err = 0;
+        if ((err = parsemethod(tokens[0], request)) != 0)
+            return (request.setError(err, "Bad method"));
+        if ((err = parsepath(tokens[1], request)) != 0)
+            return (request.setError(err, "Bad path"));
+        if ((err = parseversion(tokens[2], request)) != 0)
+            return (request.setError(err, "Bad version"));
 
-		request.setStatus(Request::HEADERS);
-	}
+        request.setStatus(Request::HEADERS);
+    }
 
-	
-	if (request.getStatus() == Request::HEADERS)
-	{
-		size_t pos = buffer.find("\r\n\r\n");
-		if (pos == std::string::npos)
-			return ;
+    if (request.getStatus() == Request::HEADERS)
+    {
+        size_t pos = buffer.find("\r\n\r\n");
+        if (pos == std::string::npos)
+            return;
 
-		std::string headers_str = buffer.substr(0, pos);
-		buffer.erase(0, pos + 4);
+        std::string headers_str = buffer.substr(0, pos);
+        buffer.erase(0, pos + 4);
 
-		request.setHeaders(parseheaders_map(headers_str));
+        request.setHeaders(parseheaders_map(headers_str));
 
-		
-		std::map<std::string, std::string> h = request.getHeaders();
-		if (h.count("Content-Length"))
-		{
-			std::istringstream iss(h["Content-Length"]);
-			size_t cl = 0;
-			iss >> cl;
-			request.setMaxBodySize(cl);
-		}
+        std::map<std::string, std::string> h = request.getHeaders();
+        if (h.count("content-length"))
+        {
+            std::istringstream iss(h["content-length"]);
+            size_t cl = 0;
+            iss >> cl;
+            request.setcontent_lenghth(cl);
+            if (cl > request.getMaxBodySize() && request.getMaxBodySize() != 0)
+            {
+                request.setError(413, "Content-Length exceeds max body size");
+                return;
+            }
+        }
 
-		int err = checkheaders(request);
-		if (err != 0)
-			return (request.setError(err, "Header check failed"));
+        int err = checkheaders(request);
+        if (err != 0)
+            return (request.setError(err, "Header check failed"));
 
-		if (request.getMethod() == "GET" || request.getMethod() == "DELETE")
-			return (request.setStatus(Request::COMPLETE));
+        if (request.getMethod() == "GET" || request.getMethod() == "DELETE")
+            return (request.setStatus(Request::COMPLETE));
 
-		if (request.getMaxBodySize() == 0)
-			return (request.setStatus(Request::COMPLETE));
+        if (request.getMethod() == "POST")
+        {
+            if (h.count("content-length"))
+            {
+                size_t cl = std::atoi(h["content-length"].c_str());
+                if (cl > 0)
+                {
+                    request.setStatus(Request::BODY);
+                }
+                else
+                {
+                    request.setStatus(Request::COMPLETE);
+                    return;
+                }
+            }
+            else
+            {
+                request.setStatus(Request::COMPLETE);
+                return;
+            }
+        }
+        else
+        {
+            request.setStatus(Request::COMPLETE);
+            return;
+        }
+    }
 
-		request.setStatus(Request::BODY);
-	}
-
-	
-	if (request.getStatus() == Request::BODY)
-	{
-		if (!buffer.empty())
-			setbody(buffer, request);
-	}
+    if (request.getStatus() == Request::BODY)
+    {
+        if (!buffer.empty())
+        {
+            setbody(buffer, request);
+            if (request.isComplete())
+            {
+                buffer.clear();
+                return;
+            }
+        }
+    }
 }
