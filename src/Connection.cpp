@@ -46,6 +46,7 @@ Connection::~Connection()
 
 void Connection::parseRequest(const std::string& data)  // ← Changé de const char* à const std::string&
 {
+        //  _raw_request += std::string(buf);  //malika
     _raw_request += data;  // ← Plus de problème de \0
     if(_parsed)
         return;

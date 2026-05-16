@@ -6,7 +6,7 @@ SRCS = $(addprefix src/, $(shell ls src | grep .cpp))
 OBJS = $(SRCS:.cpp=.o)
 
 CXX = c++
-CXX_FLAGS = -Wall -Wextra -Werror -std=c++98
+CXX_FLAGS = -Wall -Wextra -Werror -std=c++98 #-g3 -fsanitize=address -fsanitize=leak
 
 all: $(NAME)
 

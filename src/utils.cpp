@@ -1,7 +1,7 @@
 #include "../include/WebServer.hpp"
 
 
-std::map<std::string, std::string>      setCgiEnv(Connection& client)
+std::map<std::string, std::string>      setCgiEnv(Connection& client, const LocationConfig* loc)
 {
         std::map<std::string, std::string> env; 
         Request req = client.getRequest();
@@ -10,18 +10,8 @@ std::map<std::string, std::string>      setCgiEnv(Connection& client)
         env["SERVER_PROTOCOL"] = req.getVersion();  
         env["SCRIPT_NAME"] = req.getPath();
 
-        std::string fullPath = req.getPath();
-        size_t queryPos = fullPath.find('?');
-        if (queryPos != std::string::npos)
-        {
-            env["PATH_INFO"] = fullPath.substr(0, queryPos);
-            env["QUERY_STRING"] = fullPath.substr(queryPos + 1);
-        } 
-        else
-        {
-            env["PATH_INFO"] = fullPath;
-            env["QUERY_STRING"] = "";
-        }       
+        env["PATH_INFO"] = req.getPath();
+        env["QUERY_STRING"] = req.getQuery();
         
         std::map<std::string, std::string> headers = req.getHeaders();
 
@@ -44,9 +34,11 @@ std::map<std::string, std::string>      setCgiEnv(Connection& client)
 
         env["GATEWAY_INTERFACE"] = "CGI/1.1";
         env["SERVER_SOFTWARE"] = "Webserv/1.0";
-        env["PATH_TRANSLATED"] = client.getServer()->getConfig().root + env["PATH_INFO"]; 
-        env["DOCUMENT_ROOT"] = client.getServer()->getConfig().root;
+        std::string root = (loc->root.empty()) ? client.getServer()->getConfig().root : loc->root;
+        env["PATH_TRANSLATED"] = root + env["PATH_INFO"]; 
         
+        env["DOCUMENT_ROOT"] = root;
+        env["REDIRECT_STATUS"] = "200";
         return env;
 }
 

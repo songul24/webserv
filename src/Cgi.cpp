@@ -178,7 +178,7 @@ std::string     cgi_response(std::string& output, ServerConfig* conf)
                         response = "HTTP/1.0 200 OK\r\nConnection: close\r\n";
         }
         line.clear();
-        if(cgi_headers.find("Content-Type:") == std::string::npos)
+        if(cgi_headers.find("Content-Type:") == std::string::npos && cgi_headers.find("Content-type:") == std::string::npos)
         {
                 if(response.find("200 OK") == std::string::npos && response.find("302 Found") == std::string::npos)
                 {
@@ -195,12 +195,12 @@ std::string     cgi_response(std::string& output, ServerConfig* conf)
 		n << cgi_body.size();
                 response += "Content-Length: " + n.str() + "\r\n";
         }
+        response += cgi_headers + "\r\n\r\n"  + cgi_body;
 
-        response += cgi_headers + "\r\n" + cgi_body;
         return response;
 }
 
-std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath)
+std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath, const LocationConfig* loc)
 {
         //scriptPath → the script that exists on server
         // bodyPath → the body/data the user sent, saved on disk
@@ -226,7 +226,6 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
 
         }
 
-        signal(SIGINT, SIG_IGN);
         pid_t pid = fork();
         if(pid == -1)
         {
@@ -237,8 +236,15 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
         }
         if(pid == 0)
         {
-                // signal(SIGINT, sig_hand);
-                char **envp = map_to_env(setCgiEnv(client));
+                signal(SIGINT, SIG_IGN);
+                std::map<std::string, std::string> envm = setCgiEnv(client, loc);
+                char cwd[PATH_MAX];
+                getcwd(cwd, sizeof(cwd));
+                std::string script = scriptPath;
+                if(script.size() >= 2 && script[0] == '.' && script[1] == '/')
+                    script = script.substr(2);
+                envm["SCRIPT_FILENAME"] = std::string(cwd) + "/" + script;
+                char **envp = map_to_env(envm);
                 char *args[3];
                 args[0] = strdup(cgiPath.c_str());
                 args[1] = strdup(scriptPath.c_str());

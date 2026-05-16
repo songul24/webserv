@@ -315,13 +315,53 @@ void setbody( std::string &chunk, Request &request )
 
     request.addBytesRead(chunk.size());
     chunk.clear();
-
     if (request.getBytesRead() >= content_length)
     {
         request.closeBodyFile();
         request.setStatus(Request::COMPLETE);
     }
 }
+
+// void	setbody( std::string &chunk, Request &request )
+// {
+// 	// Premier appel : créer le fichier temporaire
+// 	if (request.getFile() == -2)
+// 	{
+// 		std::string filename = generate_name();
+// 		int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
+// 		if (fd == -1)
+// 		{
+// 			request.setError(500, "Body file open failure");
+// 			return ;
+// 		}
+// 		request.setBodyFile(filename, fd);
+// 	}
+
+// 	size_t bytes_read = request.getBytesRead();
+// 	size_t max        = request.getMaxBodySize();
+
+// 	// Trop de données
+// 	if (bytes_read + chunk.size() > max)
+// 	{
+// 		request.setError(413, "Body larger than Content-Length");
+// 		return ;
+// 	}
+
+// 	if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
+// 	{
+// 		request.setError(500, "Body write() failure");
+// 		return ;
+// 	}
+
+// 	request.addBytesRead(chunk.size());
+
+// 	// Body complet
+// 	if (request.getBytesRead() >= max)
+// 	{
+// 		request.closeBodyFile();
+// 		request.setStatus(Request::COMPLETE);
+// 	}
+// }
 
 
 void parse_request( std::string &buffer, Request &request )
