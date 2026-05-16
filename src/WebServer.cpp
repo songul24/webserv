@@ -146,7 +146,7 @@ std::string     buildRedirect(int code, const std::string& new_url)
 
 const LocationConfig* setup_methods(Connection& client, std::string* resp)
 {
-        ServerConfig conf = client.getServer()->getConfig();
+        const ServerConfig& conf = client.getServer()->getConfig();
         Request req = client.getRequest();
         std::string method = req.getMethod();
         
@@ -184,7 +184,7 @@ void    WebServer::execute_methods(int fd)
         const LocationConfig *loc = setup_methods(_clients[fd], &response);
         if(response.empty() && loc)
         {
-                ServerConfig conf = _clients[fd].getServer()->getConfig();
+                const ServerConfig& conf = _clients[fd].getServer()->getConfig();
                 std::string root = (loc && !loc->root.empty()) ? loc->root : conf.root;
                 std::string uri  = _clients[fd].getRequest().getPath();
                 if (!root.empty() && root[root.size() - 1] == '/' && !uri.empty() && uri[0] == '/')
