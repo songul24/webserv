@@ -15,13 +15,13 @@ std::map<std::string, std::string>      setCgiEnv(Connection& client, const Loca
         
         std::map<std::string, std::string> headers = req.getHeaders();
 
-        if (headers.count("Content-Length"))
-            env["CONTENT_LENGTH"] = headers["Content-Length"];
+        if (headers.count("content-length"))
+            env["CONTENT_LENGTH"] = headers["content-length"];
 
-        if (headers.count("Content-Type"))
-            env["CONTENT_TYPE"] = headers["Content-Type"];      
-        if (headers.count("Cookie"))
-            env["HTTP_COOKIE"] = headers["Cookie"];     
+        if (headers.count("content-type"))
+            env["CONTENT_TYPE"] = headers["content-type"];      
+        if (headers.count("cookie"))
+            env["HTTP_COOKIE"] = headers["cookie"];     
        
         
         if (!client.getServer()->getConfig().server_names.empty())

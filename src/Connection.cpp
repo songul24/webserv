@@ -46,19 +46,27 @@ Connection::~Connection()
 
 void Connection::parseRequest(const std::string& data)  // ← Changé de const char* à const std::string&
 {
-        //  _raw_request += std::string(buf);  //malika
     _raw_request += data;  // ← Plus de problème de \0
     if(_parsed)
         return;
     
-    size_t header_end = _raw_request.find("\r\n\r\n");
-    if (header_end == std::string::npos)
-        return;
+    // size_t header_end = _raw_request.find("\r\n\r\n");
+    // if (header_end == std::string::npos)
+    //     return;
  
-    _request.setMaxBodySize(_server->getConfig().max_body_size);    
+    // _request.setMaxBodySize(_server->getConfig().max_body_size);    
+
+    if (_request.getStatus() != Request::BODY)
+    {
+        size_t header_end = _raw_request.find("\r\n\r\n");
+        if (header_end == std::string::npos)
+            return;
+        _request.setMaxBodySize(_server->getConfig().max_body_size);
+    }
+
     parse_request(_raw_request, _request);
     
-    _raw_request.erase(0, header_end + 4); 
+    // _raw_request.erase(0, header_end + 4); 
     if (_request.isError())
     {
         std::cerr << "Parse error: " << _request.getError() << std::endl;

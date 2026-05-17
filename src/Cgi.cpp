@@ -77,17 +77,32 @@ std::string buildResponse(int code, const std::string &body, const std::string &
 }
 
 
+// std::string read_File(const std::string& path)
+// {
+//         std::ifstream file(path.c_str(), std::ios::binary);
+//         if (!file.is_open())
+//                 return "";
+//         std::ostringstream ss;
+//         ss << file.rdbuf();
+//         return ss.str();
+// }
+
 std::string read_File(const std::string& path)
 {
-        std::ifstream file(path.c_str(), std::ios::binary);
-        if (!file.is_open())
-                return "";
-        std::ostringstream ss;
-        ss << file.rdbuf();
-        return ss.str();
+    std::ifstream file(path.c_str(), std::ios::binary);
+    if (!file.is_open())
+        return "";
+    
+    file.seekg(0, std::ios::end);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    std::string content(size, '\0');
+    if (file.read(&content[0], size))
+        return content;
+    
+    return "";
 }
-
-
 
 std::string    is_cgi(const ServerConfig& srv, const LocationConfig* loc, const std::string& path)
 {
@@ -205,7 +220,6 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
         //scriptPath → the script that exists on server
         // bodyPath → the body/data the user sent, saved on disk
         // cgiPath → the interpreter to run the script with
-
         ServerConfig conf = client.getServer()->getConfig(); 
         int cgi_fd, status;
         int body_fd = -1;
@@ -257,7 +271,6 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
                 }
                 dup2(cgi_fd,   STDOUT_FILENO);
                 close(cgi_fd);
-
                 execve(cgiPath.c_str(), args, envp);
                 free(args[0]);
                 free(args[1]);

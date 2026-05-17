@@ -39,7 +39,7 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
         
         Request req = cnx.getRequest();
         //get extention
-        std::string extention = getExtention(req.getHeaders()["Content-Type"]);
+        std::string extention = getExtention(req.getHeaders()["content-type"]);
         if(extention.empty())
         {
                 std::remove(req.getBody().c_str());

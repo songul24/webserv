@@ -63,7 +63,7 @@ setup_files() {
     cat > storage/session.py << 'EOF'
 #!/usr/bin/env python3
 import os, sys
-print("Content-Type: text/html\r\n\r", end="")
+print("Content-Type: text/html\r\n\r\n", end="")
 print("<html><body>")
 print("<h1>CGI Session Test</h1>")
 print(f"<p>REQUEST_METHOD: {os.environ.get('REQUEST_METHOD', 'not set')}</p>")
