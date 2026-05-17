@@ -77,17 +77,34 @@ std::string buildResponse(int code, const std::string &body, const std::string &
 }
 
 
+// std::string read_File(const std::string& path)
+// {
+//         std::ifstream file(path.c_str(), std::ios::binary);
+//         if (!file.is_open())
+//                 return "";
+//         std::ostringstream ss;
+//         ss << file.rdbuf();
+//         return ss.str();
+// }
+
 std::string read_File(const std::string& path)
 {
-        std::ifstream file(path.c_str(), std::ios::binary);
-        if (!file.is_open())
-                return "";
-        std::ostringstream ss;
-        ss << file.rdbuf();
-        return ss.str();
+    std::ifstream file(path.c_str(), std::ios::binary);
+    if (!file.is_open())
+        return "";
+    
+    // Obtenir la taille du fichier
+    file.seekg(0, std::ios::end);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    // Lire exactement la taille
+    std::string content(size, '\0');
+    if (file.read(&content[0], size))
+        return content;
+    
+    return "";
 }
-
-
 
 std::string    is_cgi(const ServerConfig& srv, const LocationConfig* loc, const std::string& path)
 {

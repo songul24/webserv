@@ -71,7 +71,7 @@ setup_test_files() {
     
     # Fichiers HTML
     echo "<h1>Index Page</h1>" > public/website1/index.html
-    echo "<h1>Home Page</h1>" > public/website1/home/index.html
+    #echo "<h1>Home Page</h1>" > public/website1/home/index.html
     echo "<h1>About Page</h1>" > public/website1/about.html
     echo "<h1>Empty Page</h1>" > public/website1/empty.html
     echo "<h1>404 Not Found</h1>" > public/error_pages/404.html
