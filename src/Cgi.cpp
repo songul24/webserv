@@ -93,10 +93,12 @@ std::string read_File(const std::string& path)
     if (!file.is_open())
         return "";
     
+
     file.seekg(0, std::ios::end);
     std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
     
+
     std::string content(size, '\0');
     if (file.read(&content[0], size))
         return content;
