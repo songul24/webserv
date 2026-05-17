@@ -4,6 +4,7 @@
 Server::Server(ServerConfig config)
 : _config(config), _fd(-1), _port("")
 {
+        std::cout << "ip -----" << _config.ip << std::endl;
         std::ostringstream oss;
         oss << _config.port;
         _port = oss.str();
@@ -98,5 +99,6 @@ int    Server::setup()
                 close(_fd);
 		return (1);
 	}
+        std::cout << "Server listening on server ip" << _config.ip.c_str() << "in Port: " << _port << std::endl;
         return 0;
 }

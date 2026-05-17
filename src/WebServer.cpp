@@ -187,6 +187,8 @@ void    WebServer::execute_methods(int fd)
                 const ServerConfig& conf = _clients[fd].getServer()->getConfig();
                 std::string root = (loc && !loc->root.empty()) ? loc->root : conf.root;
                 std::string uri  = _clients[fd].getRequest().getPath();
+                if(loc)
+                        uri = uri.substr(loc->path.size());
                 if (!root.empty() && root[root.size() - 1] == '/' && !uri.empty() && uri[0] == '/')
                         uri = uri.substr(1);
                 else if (!root.empty() && root[root.size() - 1] != '/' && !uri.empty() && uri[0] != '/')

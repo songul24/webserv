@@ -125,7 +125,6 @@ std::string  Get_method(Connection &client, const LocationConfig* loc, std::stri
         root.erase(root.size() - 1);
     if (uri.find("..") != std::string::npos)
         return errorResponse(403, "text/html", &srv);
-    path = root + uri;
     if (!exists(path))
         return errorResponse(404, "text/html", &srv);
     if (isDir(path))
