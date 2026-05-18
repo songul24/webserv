@@ -223,7 +223,7 @@ HTML_CONTENT = """Content-Type: text/html\r\n\r\n<!DOCTYPE html>
                 <a href="http://${interface}/largefile.html" class="test-btn" target="_blank">
                     Large File 
                 </a>
-                <a href="http://${interface}/video/nature.mp4" class="test-btn" target="_blank">
+                <a href="http://${interface}/video.mp4" class="test-btn" target="_blank">
                     Large Video
                 </a>
                 <button class="test-btn" onclick="testConcurrentRequests()">

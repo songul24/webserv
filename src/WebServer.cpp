@@ -212,31 +212,6 @@ void    WebServer::execute_methods(int fd)
 
 
 
-// void    WebServer::handle_client_request(int fd)
-// {
-//         char buf[10000];
-//         int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
-//         if(bytes <= 0)
-//         {
-//                 close_connection(fd);
-//                 return ;
-//         }
-//         buf[bytes] = '\0';
-//         _clients[fd].parseRequest(buf);
-//         if(_clients[fd].getRequest().isError())
-//         {
-//                 int code = _clients[fd].getRequest().getError();
-//                 ServerConfig conf = _clients[fd].getServer()->getConfig();
-//                 std::string resp = errorResponse(code, "text/html", &conf);
-//                 send(fd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
-//                 close_connection(fd);
-//         }
-//         else if(_clients[fd].getParsed())
-//         {
-//                 execute_methods(fd);
-//                 handle_client_response(fd);
-//         }
-// }
 
 void    WebServer::handle_client_request(int fd)
 {
@@ -261,6 +236,7 @@ void    WebServer::handle_client_request(int fd)
         }
         else if(_clients[fd].getParsed())
         {
+                std::cout << "---------HERE IN EXECUTE METHODS" << std::endl;
                 execute_methods(fd);
                 handle_client_response(fd);
         }
@@ -273,11 +249,24 @@ void    WebServer::check_timeout()
         {
                 int fd = it->first;
                 Connection &client = it->second;
-                if (difftime(time(NULL), client.get_Lastactive()) > 60)
+                Request::t_status status = client.getRequest().getStatus(); 
+                
+                if ((difftime(time(NULL), client.get_Lastactive()) > 60 
+                && (status == Request::COMPLETE || status == Request::ERROR))
+                || (difftime(time(NULL), client.get_Lastactive()) > 30 
+                && (status != Request::COMPLETE && status != Request::ERROR)))
                 {
-                        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
-                        _clients.erase(it++); 
-                        std::cout << "timeout fd=" << fd << std::endl;
+                        ServerConfig conf = client.getServer()->getConfig();
+                        std::string resp = errorResponse(408, "text/html", &conf);
+                        client.setResponse(resp);
+                        client.setRespLen(resp.size());
+                        client.setSentlen(0);
+                        std::cout << "timeout fd=" << client.getFd() << std::endl;
+
+                        std::map<int, Connection>::iterator next_it = it;
+                        next_it++;
+                        handle_client_response(fd);
+                       it = next_it;
                 }
                 else
                         ++it;
@@ -337,7 +326,7 @@ void    WebServer::runServer()
                         {
                                 std::cout << "Error/hangup on fd="<< fd << std::endl;
                                 epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
-                                close_connection(fd);
+                                close_connection(fd); //SEND RESPONSE-----------------
                                 continue;
                         }
 
