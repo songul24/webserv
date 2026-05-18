@@ -36,6 +36,7 @@ Connection& Connection::operator=(Connection const &other)
 
 Connection::~Connection()
 {
+        
         // if(_fd != -1)
         // {
         //         std::cout << "client " << _fd << "closed!" << std::endl;

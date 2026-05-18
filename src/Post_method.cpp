@@ -33,6 +33,7 @@ std::string     generateRandom_name()
 
 std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::string& path)
 {
+        
         ServerConfig conf = cnx.getServer()->getConfig();
         if (!cnx.getIsThereBody())
                 return errorResponse(400, "text/html", &conf);
@@ -56,6 +57,9 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
                 upload_path += "/" + filename;
                 if(std::rename(req.getBody().c_str(), upload_path.c_str()))
                 {
+                        std::cerr << "rename failed: " << strerror(errno)
+              << " | src: " << req.getBody()
+              << " | dst: " << upload_path << std::endl;
                         std::remove(req.getBody().c_str());
                         return errorResponse(500, "text/html", &conf);
                 }

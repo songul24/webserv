@@ -6,7 +6,7 @@ std::string generate_name( void )
 	static int counter = 0;
 	std::ostringstream oss;
 	//change to this for POST!!!!!!!
-	oss << "./storage/body_" << getpid() << "_" << counter++;
+	oss << "var/www/storage/body_" << getpid() << "_" << counter++;
 	return oss.str();
 }
 
@@ -70,11 +70,12 @@ Request &Request::operator=( const Request &old )
 Request::~Request( void )
 {
 	// Fermer le fd s'il est encore ouvert
-	if (file != -2)
-	{
-		close(file);
-		file = -2;
-	}
+	// if (file != -2)
+	// {
+	// 	close(file);
+	// 	file = -2;
+	// }
+	// std::remove(body.c_str());
 }
 
 
