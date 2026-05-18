@@ -3,7 +3,7 @@
 
 int     main(int argc, char **argv)
 {
-        std::string configPath = "config.conf"; 
+        std::string configPath = "config/config.conf"; 
         if (argc == 2)
                 configPath = argv[1];
         else if (argc > 2)
