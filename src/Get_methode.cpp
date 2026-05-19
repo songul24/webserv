@@ -27,13 +27,34 @@ static std::string mimeType(const std::string &path)
 
     std::string ext = path.substr(dot);
 
+    // Vidéo
+    if (ext == ".mp4") return "video/mp4";
+    if (ext == ".webm") return "video/webm";
+    if (ext == ".ogg") return "video/ogg";
+    if (ext == ".avi") return "video/x-msvideo";
+    if (ext == ".mov") return "video/quicktime";
+    if (ext == ".mkv") return "video/x-matroska";
+    
+    // Audio (optionnel)
+    if (ext == ".mp3") return "audio/mpeg";
+    if (ext == ".wav") return "audio/wav";
+    
+    // Image
+    if (ext == ".png") return "image/png";
+    if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
+    if (ext == ".gif") return "image/gif";
+    if (ext == ".svg") return "image/svg+xml";
+    
+    // Texte
     if (ext == ".html" || ext == ".htm") return "text/html";
     if (ext == ".css") return "text/css";
     if (ext == ".js") return "application/javascript";
-    if (ext == ".png") return "image/png";
-    if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
     if (ext == ".txt") return "text/plain";
     if (ext == ".json") return "application/json";
+    
+    // Fichiers téléchargeables
+    if (ext == ".pdf") return "application/pdf";
+    if (ext == ".zip") return "application/zip";
 
     return "application/octet-stream";
 }
