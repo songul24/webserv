@@ -63,64 +63,6 @@ void    WebServer::setupServer(const std::string& configPath)
 
 
 
-
-void    WebServer::handle_new_connection(Server *srv)
-{
-        while(true) 
-        {
-                int client_fd = accept(srv->getFd(), NULL, NULL);
-                if (client_fd < 0) 
-                        break;
-                if(set_nonblock(client_fd))
-                {
-                        close(client_fd);
-                        continue;
-                }
-                if(add_to_epoll(_epoll_fd, client_fd, EPOLLIN))
-                {
-                        close(client_fd);
-                        continue;
-                }   
-                _clients[client_fd] = Connection(srv, client_fd);
-                std::cout << "New client fd=" << client_fd << std::endl;
-        }
-}
-
-void    WebServer::close_connection(int fd)
-{
-        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
-        _clients.erase(fd);
-        close(fd);
-}
-
-void    WebServer::handle_client_response(int fd)
-{
-        std::cout << "-------Send client resp----> " << fd << std::endl;
-
-        int sent_byte = _clients[fd].getSentlen();
-        int total_len =  _clients[fd].getRespLen();
-        const std::string& resp = _clients[fd].getResponse();
-        int new_sent_byte = sent_byte;
-        
-        int n = send(fd, resp.c_str() + sent_byte, total_len - sent_byte, MSG_NOSIGNAL);
-        if(n <= 0)
-        {
-                close_connection(fd);
-                return ;
-        }
-        new_sent_byte = sent_byte + n;
-        _clients[fd].setSentlen(new_sent_byte);
-        if(new_sent_byte < total_len)
-        {
-                mod_to_epoll(_epoll_fd, fd, EPOLLOUT);
-        }
-        else
-        {
-                std::cout<<"******************RESPONSE SENT TO CLIENT:"<< fd <<"*******************"<<std::endl;
-                close_connection(fd);
-        }
-}
-
 std::string     buildRedirect(int code, const std::string& new_url)
 {
         std::ostringstream oss;
@@ -202,7 +144,7 @@ void    WebServer::execute_methods(int fd)
                 else if(method == "POST")
                         response = Post_method(_clients[fd], loc, file_path);
                 else
-                        response = errorResponse(404, "text/html", &_clients[fd].getServer()->getConfig());
+                        response = errorResponse(501, "text/html", &_clients[fd].getServer()->getConfig());
         }
 
         _clients[fd].setResponse(response);
@@ -210,22 +152,25 @@ void    WebServer::execute_methods(int fd)
         _clients[fd].setSentlen(0);
 }
 
-
-
-
 void    WebServer::handle_client_request(int fd)
 {
-        char buf[10000];
-        int bytes = recv(fd, buf, sizeof(buf) - 1, 0);
-        if(bytes <= 0)
+        char buf[400000] = {0};
+        int bytes = recv(fd, buf, sizeof(buf)-1, 0);
+        if(!bytes)
         {
+                std::cout << "Client fd=" << _clients[fd].getFd() << " disconnected!" << std::endl;
                 close_connection(fd);
-                return ;
+                return;
         }
+        if(bytes < 0)
+                return ;
         buf[bytes] = '\0';
-        _clients[fd].parseRequest(buf);
+        _clients[fd].parseRequest(std::string(buf, bytes));
         if(_clients[fd].getRequest().isError())
         {
+                std::cout << "---------HERE IN ERRPRRRRRRRRRR" << std::endl;
+                if(!_clients[fd].getRequest().getBody().empty())
+                        std::remove(_clients[fd].getRequest().getBody().c_str());
                 int code = _clients[fd].getRequest().getError();
                 ServerConfig conf = _clients[fd].getServer()->getConfig();
                 std::string resp = errorResponse(code, "text/html", &conf);
@@ -241,6 +186,66 @@ void    WebServer::handle_client_request(int fd)
                 handle_client_response(fd);
         }
 }
+
+void    WebServer::close_connection(int fd)
+{
+        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+        _clients.erase(fd);
+        close(fd);
+}
+
+void    WebServer::handle_client_response(int fd)
+{
+        std::cout << "-------Send client resp----> " << fd << std::endl;
+
+        int sent_byte = _clients[fd].getSentlen();
+        int total_len =  _clients[fd].getRespLen();
+        const std::string& resp = _clients[fd].getResponse();
+        int new_sent_byte = sent_byte;
+        
+        int n = send(fd, resp.c_str() + sent_byte, total_len - sent_byte, MSG_NOSIGNAL);
+        if(n <= 0)
+        {
+                close_connection(fd);
+                return ;
+        }
+        new_sent_byte = sent_byte + n;
+        _clients[fd].setSentlen(new_sent_byte);
+        if(new_sent_byte < total_len)
+        {
+                mod_to_epoll(_epoll_fd, fd, EPOLLOUT);
+        }
+        else
+        {
+                std::cout<<"******************RESPONSE SENT TO CLIENT:"<< fd <<"*******************"<<std::endl;
+                close_connection(fd);
+        }
+}
+
+
+void    WebServer::handle_new_connection(Server *srv)
+{
+        while(true) 
+        {
+                int client_fd = accept(srv->getFd(), NULL, NULL);
+                if (client_fd < 0) 
+                        break;
+                if(set_nonblock(client_fd))
+                {
+                        close(client_fd);
+                        continue;
+                }
+                if(add_to_epoll(_epoll_fd, client_fd, EPOLLIN))
+                {
+                        close(client_fd);
+                        continue;
+                }   
+                _clients[client_fd] = Connection(srv, client_fd);
+                std::cout << "New client fd=" << client_fd << " to server " <<  srv->getConfig().ip 
+                << ":" << srv->getPort() << std::endl;
+        }
+}
+
 void    WebServer::check_timeout()
 {
         std::map<int, Connection>::iterator it;
@@ -257,11 +262,12 @@ void    WebServer::check_timeout()
                 && (status != Request::COMPLETE && status != Request::ERROR)))
                 {
                         ServerConfig conf = client.getServer()->getConfig();
+                        std::remove(client.getRequest().getBody().c_str());
                         std::string resp = errorResponse(408, "text/html", &conf);
                         client.setResponse(resp);
                         client.setRespLen(resp.size());
                         client.setSentlen(0);
-                        std::cout << "timeout fd=" << client.getFd() << std::endl;
+                        std::cout << "Timeout client fd=" << client.getFd() << std::endl;
 
                         std::map<int, Connection>::iterator next_it = it;
                         next_it++;
@@ -278,7 +284,7 @@ void    WebServer::runServer()
         // Create the epoll instance
         _epoll_fd = epoll_create(1);
         if (_epoll_fd == -1)
-                throw std::runtime_error("epoll_create failed: " + std::string(strerror(errno)));
+                throw std::runtime_error("Epoll_create failed: " + std::string(strerror(errno)));
 
         size_t j = 0;
         for(size_t i = 0; i < _servers.size(); i++)
@@ -290,7 +296,7 @@ void    WebServer::runServer()
                 throw std::runtime_error("All Server Initializations Failed Program Cannot Proceed");
 
         epoll_event events[MAX_EVENTS];
-        std::cout << "servers: waiting for connections...\n" << std::endl;
+        std::cout << "\nservers: waiting for connections...\n" << std::endl;
 
         while(g_run)
         {
@@ -325,15 +331,18 @@ void    WebServer::runServer()
                         if (ev & (EPOLLERR | EPOLLHUP)) 
                         {
                                 std::cout << "Error/hangup on fd="<< fd << std::endl;
+
+                                if (_clients.count(fd) && !_clients[fd].getRequest().getBody().empty())
+                                        std::remove(_clients[fd].getRequest().getBody().c_str());
                                 epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
-                                close_connection(fd); //SEND RESPONSE-----------------
+                                close_connection(fd);
                                 continue;
                         }
 
                         // ── data ready to recv ──
                         if (ev & EPOLLIN)
                         {
-                                std::cout << "-----New request-----------" << std::endl;
+                                std::cout << "New request to fd=" << _clients[fd].getFd() << std::endl;
                                 handle_client_request(fd);
                                 if(_clients.count(fd))
                                         _clients[fd].setLastactive(time(NULL));

@@ -108,7 +108,9 @@ std::string    Delete_method(Connection& client, std::string& path)
         std::string url    = client.getRequest().getPath();
         const ServerConfig config = client.getServer()->getConfig();   
         if (check_path(url))
+        {
+                std::cout << "here in delete url = " << url << std::endl;
                 return errorResponse(403, "text/html", &config);
-       
+        }
         return Delete_file(path, config);
 }

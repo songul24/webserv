@@ -49,6 +49,11 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
        
         std::string root   = loc->root.empty() ? conf.root :loc->root;
         std::string upload = loc->upload.empty() ? conf.upload : loc->upload;
+        if (!root.empty() && root[root.size() - 1] == '/' && !upload.empty() && upload[0] == '/')
+                        upload = upload.substr(1);
+        else if (!root.empty() && root[root.size() - 1] != '/' && !upload.empty() && upload[0] != '/')
+                        root += '/';
+
         std::string upload_path = root + upload;
         struct stat buf;
         if(!stat(upload_path.c_str(), &buf) && S_ISDIR(buf.st_mode))

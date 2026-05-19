@@ -121,7 +121,7 @@ static std::string handleDirectory(const std::string &path, const std::string &u
         }
     }
 
-    bool autoindex;
+    bool autoindex = false;
     if (loc != NULL && loc->autoindex)
         autoindex = true;
     // else

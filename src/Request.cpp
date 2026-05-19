@@ -70,12 +70,11 @@ Request &Request::operator=( const Request &old )
 Request::~Request( void )
 {
 	// Fermer le fd s'il est encore ouvert
-	// if (file != -2)
-	// {
-	// 	close(file);
-	// 	file = -2;
-	// }
-	// std::remove(body.c_str());
+	if (file != -2)
+	{
+		close(file);
+		file = -2;
+	}
 }
 
 
@@ -209,10 +208,10 @@ std::vector<std::string> split( std::string &s, char sep )
 
 int	parsemethod( std::string &method, Request &request )
 {
-	if (method == "HEAD")
-		method = "GET";// a verifier
+	// if (method == "HEAD")
+	// 	method = "GET";// a verifier
 	if (method != "GET" && method != "POST" && method != "DELETE")
-		return (400);
+		return (501);
 	request.setMethod(method);
 	return (0);
 }
