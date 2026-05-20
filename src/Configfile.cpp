@@ -1,6 +1,6 @@
 #include "../include/configfile.hpp"
 
-Configfile::Configfile() {}
+Configfile::Configfile(){}
 Configfile::~Configfile() {}
 
 void configError(const std::string& message) {
@@ -138,7 +138,9 @@ std::pair<std::string, int> Configfile::parseListen(const std::string& listenVal
     return result;
 }
 
-LocationConfig Configfile::parseLocation(std::vector<std::string>& tokens, size_t& i) {
+LocationConfig Configfile::parseLocation(std::vector<std::string>& tokens, size_t& i, 
+                                          const std::string& server_upload, 
+                                          bool server_has_max_body_size) {
     LocationConfig loc;
 
     i++;
@@ -178,6 +180,10 @@ LocationConfig Configfile::parseLocation(std::vector<std::string>& tokens, size_
                 std::string method = tokens[i++];
                 if (!isValidMethod(method))
                     configError("Invalid HTTP method in location: " + method);
+                if (method == "POST")
+                {
+                    loc.has_post = true;
+                }
                 loc.methods.push_back(method);
             }
             if (i >= tokens.size())
@@ -241,6 +247,14 @@ LocationConfig Configfile::parseLocation(std::vector<std::string>& tokens, size_
             if (i < tokens.size()) i++;//skip ; for unknown directive 
         }
     }
+    if (loc.has_post)
+    {
+        bool has_upload = !loc.upload.empty() || !server_upload.empty();
+        if (!has_upload)
+            configError("POST method in location requires an upload directory");
+        if(!server_has_max_body_size)
+            configError("POST method in location requires max_client_body_size to be set in server block");
+    }
     if (i >= tokens.size() || tokens[i] != "}")
         configError("Expected '}' at end of location block");
     i++;
@@ -281,6 +295,7 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
             configError("Expected '{' after server");
         i++;
         ServerConfig server;
+        bool has_post = false;
         while (i < tokens.size() && tokens[i] != "}") {
             if (tokens[i] == "listen") {
                 i++;
@@ -334,6 +349,7 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                 if (i >= tokens.size())
                     configError("Invalid max_client_body_size");
                 server.max_body_size = parseBodySize(tokens[i++]);
+                server.has_max_body_size = true;
                 if (i >= tokens.size() || tokens[i] != ";")
                     configError("Missing ; after max_client_body_size");
                 i++; // skip ;
@@ -345,6 +361,10 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                     std::string method = tokens[i++];
                     if (!isValidMethod(method))
                         configError("Invalid HTTP method: " + method);
+                    if (method == "POST")
+                    {
+                        has_post = true;
+                    }
                     server.methods.push_back(method);
                 }
                 if (i >= tokens.size())
@@ -414,7 +434,7 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                 i++;
             }
             else if (tokens[i] == "location") {
-                LocationConfig loc = parseLocation(tokens, i);
+                LocationConfig loc = parseLocation(tokens, i, server.upload, server.has_max_body_size);
                 for(size_t k = 0; k < server.locations.size(); k++) {
                     if (server.locations[k].path == loc.path) {
                         configError("Duplicate location path: " + loc.path);
@@ -427,6 +447,13 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                 while (i < tokens.size() && tokens[i] != ";") i++;
                 if (i < tokens.size()) i++;
             }
+        }
+        if (has_post)
+        {
+            if (server.upload.empty())
+                configError("POST method requires an upload directory");
+            if (!server.has_max_body_size)
+                configError("POST method requires max_client_body_size to be set");
         }
         if (i >= tokens.size() || tokens[i] != "}")
                 configError("Missing closing '}' for server block");
