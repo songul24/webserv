@@ -1,0 +1,4 @@
+server{
+        listen 2323;
+        index vara/;
+}
