@@ -170,7 +170,7 @@ std::string     cgi_response(std::string& output, ServerConfig* conf)
         {
                 sep = output.find("\n\n");
                 if (sep == std::string::npos)
-                        return errorResponse(502, "text/html", conf);
+                        return buildResponse(200, output, "text/html", NULL);
                 skip = 2;
         }
 
@@ -183,6 +183,8 @@ std::string     cgi_response(std::string& output, ServerConfig* conf)
 	if(status != std::string::npos)
         {
                 size_t end = cgi_headers.find("\n", status);
+                if (end == std::string::npos)
+                        end = cgi_headers.size();
                 line = cgi_headers.substr(status + 8, end - (status + 8));
                 cgi_headers.erase(status, end - status + 1);
                 response = "HTTP/1.0 " + line + "\r\nConnection: close\r\n";

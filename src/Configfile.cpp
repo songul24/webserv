@@ -4,8 +4,9 @@ Configfile::Configfile() {}
 Configfile::~Configfile() {}
 
 void configError(const std::string& message) {
-    std::cerr << "Configuration error: " << message << std::endl;
-    std::exit(1);
+    throw std::runtime_error("Configuration error: " + message);
+    // std::cerr <<  << message << std::endl;
+    // std::exit(1);
 }
 bool Configfile::isValidMethod(const std::string& method) {
     return (method == "GET" || method == "POST" || method == "DELETE");
