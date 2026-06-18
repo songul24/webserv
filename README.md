@@ -1,6 +1,6 @@
 # Webserv
 
-A lightweight HTTP/1.1 web server written in C++98 as part of the 42 curriculum by zelgharb, machaouk
+A lightweight HTTP/1.1 web server written in C++98 as part of the 42 curriculum by machaouk, zelgharb
 
 The project focuses on low-level networking, socket programming, HTTP request handling, CGI execution, and asynchronous I/O using `epoll`.
 
@@ -14,7 +14,7 @@ The project focuses on low-level networking, socket programming, HTTP request ha
 * `epoll` multiplexing
 * GET / POST / DELETE methods
 * File uploads
-* CGI support (`.py`, `.php`)
+* CGI support (`.py`, `.php`, `.sh`)
 * Autoindex
 * Custom error pages
 * Multiple ports & routes
@@ -28,12 +28,6 @@ The project focuses on low-level networking, socket programming, HTTP request ha
 
 ```bash
 make
-```
-
-## Rebuild
-
-```bash
-make re
 ```
 
 ## Run with default config
@@ -54,19 +48,23 @@ make re
 
 ```conf
 server {
-    listen 127.0.0.1:8080;
-    client_max_body_size 50M;
+    server_name 127.0.0.1;
+    listen 127.0.0.1:8089;
+    max_client_body_size 100M;
+    root var/www;
 
     location / {
         root var/www;
         index index.html;
-        methods GET POST DELETE;
-        autoindex off;
+        allow GET POST DELETE;
     }
 
-    location /cgi {
-        root var/www/cgi;
-        cgi .py /usr/bin/python3;
+    location /upload {
+        allow GET POST;
+        root var/www;
+        index index.html;
+        autoindex on;
+        upload /upload;
     }
 }
 ```
@@ -119,6 +117,7 @@ Supported interpreters:
 
 * Python
 * PHP
+* BASH
 
 Example:
 
@@ -136,17 +135,15 @@ The server forks a child process, executes the CGI, and sends its output as the 
 .
 ├── Makefile
 ├── README.md
-├── config.conf
-├── index.html
+├──
+├── config/
 │
 ├── include/
-│   ├── Connection.hpp
+│   ├── configfile.hpp
 │   ├── Request.hpp
-│   ├── Request_header.hpp
-│   ├── Request_line.hpp
 │   ├── Server.hpp
 │   ├── WebServer.hpp
-│   └── configfile.hpp
+│   └── Connection.hpp
 │
 ├── src/
 │   ├── main.cpp
@@ -154,8 +151,6 @@ The server forks a child process, executes the CGI, and sends its output as the 
 │   ├── Server.cpp
 │   ├── Connection.cpp
 │   ├── Request.cpp
-│   ├── Request_header.cpp
-│   ├── Request_line.cpp
 │   ├── Configfile.cpp
 │   ├── Get_methode.cpp
 │   ├── Post_method.cpp
@@ -179,10 +174,14 @@ The server forks a child process, executes the CGI, and sends its output as the 
 │   ├── 502.html
 │   └── 504.html
 │
-└── storage/
-    ├── session.py
-    ├── session_home.html
-    └── session_login.html
+└── var/www
+    ├── session/
+    ├── storage/
+    ├── upload/
+    ├── website1/
+    ├── website2/
+    ├── website3/
+    └── index.html
 ```
 
 ---
@@ -220,5 +219,5 @@ curl -X DELETE http://127.0.0.1:8080/file.txt
 
 # Authors
 
-* Zineb Elgharbaou
 * Malika Chaouki
+* Zineb Elgharbaou
