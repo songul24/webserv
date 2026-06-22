@@ -1,80 +1,97 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import warnings
-
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
 import os
 import cgi
+import uuid
+import json
 import http.cookies
-from string import Template
-from html import escape
 
 STATIC_DIR = os.environ.get("SCRIPT_ROOT", "")
-LOGIN_PAGE = STATIC_DIR + "var/www/session/session_login.html"
-HOME_PAGE = STATIC_DIR +  "var/www/session/session_home.html"
+BASE         = os.path.join(STATIC_DIR, "var/www/session")
+LOGIN_PAGE   = os.path.join(BASE, "session_login.html")
+HOME_PAGE    = os.path.join(BASE, "session_home.html")
+WELCOME_PAGE = os.path.join(BASE, "session_welcome.html")
+SESSION_DB   = os.path.join(BASE, "session_database.json")
 
+def load_db():
+    if not os.path.exists(SESSION_DB):
+        return {}
+    try:
+        with open(SESSION_DB, "r") as f:
+            return json.load(f)
+    except:
+        return {}
 
+def save_db(db):
+    with open(SESSION_DB, "w") as f:
+        json.dump(db, f)
 
-def load_page(filename):
-    """Return the contents of the named file as a string."""
-    with open(filename, "r") as file:
-        contents = file.read()
-    return contents
-
-
-def set_cookie(name, value, expires=None, path="/"):
-    """Set a cookie with the given name and value."""
-    cookie = http.cookies.SimpleCookie()
-    cookie[name] = value
+def set_cookie(value, expires=None):
+    c = http.cookies.SimpleCookie()
+    c["session_id"] = value
+    c["session_id"]["path"] = "/"
+    c["session_id"]["httponly"] = True
+    c["session_id"]["samesite"] = "Strict"
     if expires:
-        cookie[name]["expires"] = expires
-    cookie[name]["path"] = path
-    print(cookie.output())
+        c["session_id"]["expires"] = expires
+    print(c.output())
 
+def get_cookie():
+    raw = os.environ.get("HTTP_COOKIE", "")
+    c = http.cookies.SimpleCookie(raw)
+    obj = c.get("session_id")
+    return obj.value if obj else None
 
-def get_cookie(name):
-    """Retrieve the value of the specified cookie."""
-    cookie_str = os.environ.get("HTTP_COOKIE", "")
-    cookies = http.cookies.SimpleCookie(cookie_str)
-    return cookies.get(name)
-
-
-def render_login_form():
-    """Render the login form."""
+def send_page(path, username=None):
     print("Content-Type: text/html\n")
-    print(load_page(LOGIN_PAGE), end="")
-
-
-def render_home_page(username):
-    """Render the home page with the provided username."""
-    print("Content-Type: text/html\n")
-    page = load_page(HOME_PAGE)
-    page = Template(page).safe_substitute(username=escape(username.title()))
-    print(page, end="")
-
+    with open(path, "r") as f:
+        content = f.read()
+    if username:
+        content = content.replace("{{username}}", username)
+    print(content, end="")
 
 def main():
-    username_cookie = get_cookie("username")
-
     form = cgi.FieldStorage()
-    if "username" in form:
-        username = form.getvalue("username")
-        set_cookie("username", username)
-        render_home_page(username)
-    elif "logout" in form:
-        set_cookie("username", "", expires="Thu, 01 Jan 1970 00:00:00 GMT")
-        render_login_form()
-    elif username_cookie:
-        username = username_cookie.value
-        render_home_page(username)
-    else:
-        render_login_form()
+    db   = load_db()
 
+    # ── LOGOUT ────────────────────────────────────────────────────────────────
+    if "logout" in form:
+        # Only expire the cookie — keep the DB entry so returning login works
+        set_cookie("", expires="Thu, 01 Jan 1970 00:00:00 GMT")
+        send_page(LOGIN_PAGE)
+
+    # ── LOGIN ─────────────────────────────────────────────────────────────────
+    elif "username" in form:
+        username = form.getvalue("username").strip()
+
+        existing_id = None
+        for sid, data in db.items():
+            if data.get("username") == username:
+                existing_id = sid
+                break
+
+        if existing_id:
+            # Known user → welcome back
+            set_cookie(existing_id)
+            send_page(WELCOME_PAGE, username=username)
+        else:
+            # Brand new user → home page
+            session_id = str(uuid.uuid4())
+            db[session_id] = {"username": username}
+            save_db(db)
+            set_cookie(session_id)
+            send_page(HOME_PAGE, username=username)
+
+    # ── REFRESH ───────────────────────────────────────────────────────────────
+    else:
+        session_id = get_cookie()
+
+        if session_id and session_id in db:
+            username = db[session_id]["username"]
+            send_page(WELCOME_PAGE, username=username)
+        else:
+            send_page(LOGIN_PAGE)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except:
-        cgi.print_exception()
+    main()

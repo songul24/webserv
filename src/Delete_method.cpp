@@ -5,6 +5,8 @@ int     checkURL(std::string& path)
 {
         std::string url_path;
         struct stat buf;
+
+        //check file exist
         if(stat(path.c_str(), &buf) != 0)
                 return 404;
         if(access(path.c_str(), W_OK) != 0)
@@ -83,15 +85,16 @@ int     deleteURL(std::string& path)
 std::string    Delete_method(Connection& client, std::string& path, std::string& root)
 {
         const ServerConfig config = client.getServer()->getConfig(); 
+        int status =  checkURL(path);
+        if(status != 204)
+                return buildResponse(status, "", "text/html", &config);
+                
         char resolved[PATH_MAX]; 
         if(!realpath(path.c_str(), resolved))
                 return errorResponse(403, "text/html", &config);
         if(std::string(resolved).find(root) != 0)
                 return errorResponse(403, "text/html", &config);
         
-        int status =  checkURL(path);
-        if(status != 204)
-                return buildResponse(status, "", "text/html", &config);
         return buildResponse(deleteURL(path), "", "text/html", NULL);
 }
 

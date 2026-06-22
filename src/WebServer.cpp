@@ -137,6 +137,8 @@ void    WebServer::execute_methods(int fd)
                         root += '/';
                 std::string file_path = root + uri;
 
+                std::cout << "############ method -> " << method << std::endl; 
+
                 if(method == "DELETE")
                         response = Delete_method(_clients[fd], file_path, root);
                 else if(method == "GET")

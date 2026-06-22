@@ -164,66 +164,59 @@ void    kill_proccess(pid_t pid, int fd, const std::string& cgi)
 
 std::string     cgi_response(std::string& output, ServerConfig* conf)
 {
-        size_t sep = output.find("\r\n\r\n");
-        size_t skip = 4;
-        if (sep == std::string::npos)
-        {
-                sep = output.find("\n\n");
-                if (sep == std::string::npos)
-                        return buildResponse(200, output, "text/html", NULL);
-                skip = 2;
-        }
+        std::stringstream ss(output);
+        std::string line, headers = "", status_line = "HTTP/1.0 200 OK\r\n";
+        bool has_type = false, has_len = false;
+        int code = 200;
+        size_t bytes_read = 0;
 
-        std::string cgi_headers = output.substr(0, sep);
-        std::string cgi_body    = output.substr(sep + skip);
-        std::string response;
-        std::string	line;
+        while (std::getline(ss, line))
+        {
+                if (line.empty() || line.find(':') == std::string::npos)
+                        break;
+        
+                bytes_read += line.size() + 1;
+                if (!line.empty() && line[line.size() - 1] == '\r')
+                        line.erase(line.size() - 1);
 
-        size_t status = cgi_headers.find("Status: ");
-	if(status != std::string::npos)
-        {
-                size_t end = cgi_headers.find("\n", status);
-                if (end == std::string::npos)
-                        end = cgi_headers.size();
-                line = cgi_headers.substr(status + 8, end - (status + 8));
-                cgi_headers.erase(status, end - status + 1);
-                response = "HTTP/1.0 " + line + "\r\nConnection: close\r\n";
-        }
-        if(response.find("HTTP/1.0") == std::string::npos)
-        {
-                if(cgi_headers.find("Location:") != std::string::npos)
-                        response = "HTTP/1.0 302 Found\r\nConnection: close\r\n";
-                else
-                        response = "HTTP/1.0 200 OK\r\nConnection: close\r\n";
-        }
-        line.clear();
-        if(cgi_headers.find("Content-Type:") == std::string::npos && cgi_headers.find("Content-type:") == std::string::npos)
-        {
-                if(response.find("200 OK") == std::string::npos && response.find("302 Found") == std::string::npos)
+                if (line.find("status:") == 0 || line.find("Status:") == 0)
                 {
-                        std::stringstream ss(response);
-			ss >> line;
-			ss >> line;
-			return	errorResponse(atoi(line.c_str()), "text/html", conf);
+                    std::string val = line.substr(line.find(':') + 1);
+                    if (!val.empty() && val[0] == ' ') val.erase(0, 1);
+                    status_line = "HTTP/1.0 " + val + "\r\n";
+                    code = atoi(val.c_str());
+                } 
+                else 
+                {
+                    if (line.find("Content-Type:") == 0 || line.find("Content-type:") == 0) has_type = true;
+                    if (line.find("Content-Length:") == 0) has_len = true;
+                    headers += line + "\r\n";
                 }
-                response += "Content-Type: text/html\r\n";
         }
-        if(cgi_headers.find("Content-Length:") == std::string::npos)
-        {
-                std::stringstream n;
-		n << cgi_body.size();
-                response += "Content-Length: " + n.str() + "\r\n";
-        }
-        response += cgi_headers + "\r\n\r\n"  + cgi_body;
 
-        return response;
+        if (code != 200 && code != 302)
+                return errorResponse(code, "text/html", conf);
+
+        std::string body = (output.size() > bytes_read) ? output.substr(bytes_read) : "";
+        
+        if (!has_type) headers += "Content-Type: text/html\r\n";
+        if (!has_len)
+        {
+                std::stringstream sl;
+                sl << body.size();
+                headers += "Content-Length: " + sl.str() + "\r\n";
+        }
+        return status_line + "Connection: close\r\n" + headers + "\r\n" + body;
 }
+
+
 
 std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath, const LocationConfig* loc)
 {
         //scriptPath → the script that exists on server
         // bodyPath → the body/data the user sent, saved on disk
         // cgiPath → the interpreter to run the script with
+        std::cerr << "CGIII: --------#######" << std::endl;
         ServerConfig conf = client.getServer()->getConfig(); 
         int cgi_fd, status;
         int body_fd = -1;

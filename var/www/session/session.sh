@@ -1,6 +1,7 @@
 #!/bin/bash
 name="${QUERY_STRING:-}"
 
+echo  "status: 200 OK"
 echo "Content-Type: text/html"
 echo ""
 

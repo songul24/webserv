@@ -57,8 +57,17 @@ int    set_nonblock(int fd)
         if(flag == -1)
                 return (print_errno("fcntl F_GETFL", true), 1);
         //we add nonblock flag to old flags
-        if(fcntl(fd, F_SETFL, flag | O_NONBLOCK) == -1)
+        if(fcntl(fd, F_SETFL, flag | O_NONBLOCK | FD_CLOEXEC) == -1)
                 return (print_errno("fcntl F_SETFL", true), 1);
+
+
+        // 2. Set FD_CLOEXEC (using F_GETFD / F_SETFD)
+        int exc_flags = fcntl(fd, F_GETFD, 0);
+        if (exc_flags == -1)
+                return (print_errno("fcntl F_GETFD", true), 1);
+        //fd automatically closes when call any exec()
+        if (fcntl(fd, F_SETFD, exc_flags | FD_CLOEXEC) == -1)
+                return (print_errno("fcntl F_SETFD", true), 1);
         return 0;
 }
 
