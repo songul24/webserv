@@ -1,8 +1,13 @@
 <?php
-// Set the content type to standard HTML
-header('Content-Type: text/html; charset=utf-8');
-
-echo "<h1>Welcome to Website 2</h1>";
-echo "<p>The action.php script is working perfectly on your server.</p>";
-echo "<p>Current Server Time: " . date('Y-m-d H:i:s') . "</p>";
+$name = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : null;
+echo  "status: 200 OK\n";
+echo  "Content-Type: text/html\n\n";
+echo "<!DOCTYPE html>";
+echo "<html lang='en'>";
+echo "<head><meta charset='UTF-8'><title>Welcome Page</title></head>";
+echo "<body>";
+echo "<h1>Welcome, $name!</h1>";
+echo "<p>This is a simple CGI-like PHP script.</p>";
+echo "</body>";
+echo "</html>";
 ?>

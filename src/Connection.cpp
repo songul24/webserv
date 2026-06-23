@@ -1,6 +1,6 @@
 #include "../include/Connection.hpp"
 #include "../include/Server.hpp"
-#include "../include/configfile.hpp"
+#include "../include/Configfile.hpp"
 #include "../include/Request.hpp"
 
 

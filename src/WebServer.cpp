@@ -122,6 +122,7 @@ void    WebServer::execute_methods(int fd)
         std::string method = _clients[fd].getRequest().getMethod();
         std::string response;
 
+                std::cout << "############ method -> " << method << " path### " << _clients[fd].getRequest().getPath() << std::endl; 
 
         const LocationConfig *loc = setup_methods(_clients[fd], &response);
         if(response.empty() && loc)
@@ -137,7 +138,6 @@ void    WebServer::execute_methods(int fd)
                         root += '/';
                 std::string file_path = root + uri;
 
-                std::cout << "############ method -> " << method << std::endl; 
 
                 if(method == "DELETE")
                         response = Delete_method(_clients[fd], file_path, root);
@@ -258,9 +258,9 @@ void    WebServer::check_timeout()
                 Connection &client = it->second;
                 Request::t_status status = client.getRequest().getStatus(); 
                 
-                if ((difftime(time(NULL), client.get_Lastactive()) > 60 
+                if ((difftime(time(NULL), client.get_Lastactive()) > 15 
                 && (status == Request::COMPLETE || status == Request::ERROR))
-                || (difftime(time(NULL), client.get_Lastactive()) > 30 
+                || (difftime(time(NULL), client.get_Lastactive()) > 13 
                 && (status != Request::COMPLETE && status != Request::ERROR)))
                 {
                         ServerConfig conf = client.getServer()->getConfig();

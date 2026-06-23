@@ -2,7 +2,7 @@
 
 #include "Server.hpp"
 #include "Connection.hpp"
-#include "configfile.hpp"
+#include "Configfile.hpp"
 #include "Request.hpp"
 
 // #define MAX_CLIENT 1024

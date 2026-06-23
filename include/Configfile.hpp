@@ -70,6 +70,7 @@ public:
                                   bool server_has_max_body_size);    
     std::pair<std::string, int> parseListen(const std::string& listenValue);
     size_t parseBodySize(const std::string& value);
+    void validateRedirectLoops(const std::vector<ServerConfig>& servers);
 
 
     bool isValidMethod(const std::string& method);

@@ -1,12 +1,11 @@
-#include "../include/configfile.hpp"
+#include "../include/Configfile.hpp"
 
 Configfile::Configfile(){}
 Configfile::~Configfile() {}
 
 void configError(const std::string& message) {
-    throw std::runtime_error("Configuration error: " + message);
-    // std::cerr <<  << message << std::endl;
-    // std::exit(1);
+    std::cerr << "Configuration error: " << message << std::endl;
+    std::exit(1);
 }
 bool Configfile::isValidMethod(const std::string& method) {
     return (method == "GET" || method == "POST" || method == "DELETE");
@@ -280,6 +279,58 @@ void Configfile::validateServerConflicts(
     }
 }
 
+void Configfile::validateRedirectLoops(const std::vector<ServerConfig>& servers)
+{
+    for (size_t s = 0; s < servers.size(); s++)
+    {
+        const ServerConfig& server = servers[s];
+        const std::vector<LocationConfig>& locations = server.locations;
+        
+        std::map<std::string, std::string> redirects;
+        for (size_t i = 0; i < locations.size(); i++)
+        {
+            if (!locations[i].redirect.empty())
+            {
+                if (locations[i].path == locations[i].redirect)
+                {
+                    std::ostringstream oss;
+                    oss << "Direct redirect loop";
+                    configError(oss.str());
+                }
+                redirects[locations[i].path] = locations[i].redirect;
+            }
+        }
+        
+        std::map<std::string, std::string>::const_iterator it = redirects.begin();
+        while (it != redirects.end())
+        {
+            std::vector<std::string> visited;
+            std::string current = it->first;
+            
+            while (true)
+            {
+                visited.push_back(current);
+                
+                std::map<std::string, std::string>::const_iterator found = redirects.find(current);
+                if (found == redirects.end())
+                    break;
+                
+                std::string destination = found->second;
+                
+                if (std::find(visited.begin(), visited.end(), destination) != visited.end())
+                {
+                    std::ostringstream oss;
+                    oss << "Circular redirect loop detected";
+                    configError(oss.str());
+                }
+                
+                current = destination;
+            }
+            
+            ++it;
+        }
+    }
+}
 
 std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tokens) {
     std::vector<ServerConfig> servers;
@@ -310,7 +361,7 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                     }
                 }
                 server.listens.push_back(listenPair);
-                if (server.listens.size() == 1) {
+                if (server.listens.size() == 1) {//si c le premier listen, on set ip et port du server
                     server.ip = listenPair.first;
                     server.port = listenPair.second;
                 }
@@ -379,7 +430,7 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                 std::string val = tokens[i++];
                 if (val != "on" && val != "off")
                     configError("autoindex must be 'on' or 'off'");
-                server.autoindex = (val == "on");
+                server.autoindex = (val == "on");//stocke true si on, false si off
                 if (i >= tokens.size() || tokens[i] != ";")
                     configError("Missing ; after autoindex");
                 i++;
@@ -469,6 +520,6 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
     }
     if (servers.empty())
         configError("No server blocks found in configuration");
-
+    validateRedirectLoops(servers);
     return servers;
 }
