@@ -11,12 +11,14 @@ std::string     getExtention(const std::string& type)
                 ext =  ".txt";
         else if (type == "application/octet-stream")
                 ext = ".bin";
-        else if (type == "text/html" || type == "text/css" || type == "text/pdf" || type == "text/json")
+        else if (type == "text/html" || type == "text/css")
                 ext = "." + type.substr(5);
         else if (type == "text/markdown")
 		ext = ".md";
 	else if (type == "application/pdf")
 		ext = ".pdf";
+        else if (type == "application/json")
+		ext = ".json";
 	else if (type == "text/x-csrc" )
 		ext = ".c";
         return ext;
