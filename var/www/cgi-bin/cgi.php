@@ -11,3 +11,4 @@ echo "<p>This is a simple CGI-like PHP script.</p>";
 echo "</body>";
 echo "</html>";
 ?>
+

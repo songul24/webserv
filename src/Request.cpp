@@ -300,7 +300,10 @@ void setbody( std::string &chunk, Request &request )
     size_t bytes_read = request.getBytesRead();
     size_t max = request.getMaxBodySize();
     size_t content_length = request.getContentLength();
-
+    size_t remaining_bytes = content_length - bytes_read;
+    
+    if (chunk.size() > remaining_bytes)
+        chunk = chunk.substr(0, remaining_bytes);
     if (bytes_read + chunk.size() > max && max != 0)
     {
         request.setError(413, "Body exceeds max body size");
