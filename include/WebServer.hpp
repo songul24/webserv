@@ -17,6 +17,7 @@ class WebServer
                 std::vector<Server>         _servers;
                 std::map<int, Server*>      _fd_to_server;
                 std::map<int, Connection>   _clients;
+                std::map<int, int>   _cgi_to_client;
 
                 WebServer(WebServer const &other);
                 WebServer& operator=(const WebServer& other);
@@ -61,3 +62,5 @@ std::string     buildResponse(int code, const std::string &body, const std::stri
 std::string     errorResponse(int code, const std::string& type, const ServerConfig* conf);
 std::string     Post_method(Connection &cnx, const LocationConfig* loc, std::string& path);
 std::string     read_File(const std::string& path);
+std::string     cgi_response(std::string& output, ServerConfig* conf);
+void    kill_proccess(pid_t pid);

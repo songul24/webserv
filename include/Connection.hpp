@@ -28,13 +28,14 @@
 #include "Request.hpp"
 class Server;
 
-#define BACKLOG 10   // how many pending connections queue will hold
-#define MAX_EVENTS  64
+#define BACKLOG 1024   // how many pending connections queue will hold
+#define MAX_EVENTS  1024
 
 
 
 class Connection {
         private:
+                int                     _epollfd;
                 int                     _fd;
                 Server*                 _server;
                 bool                    _parsed;
@@ -50,11 +51,13 @@ class Connection {
                 bool            _header_parsed;
                 std::string     _raw_request;
 
-                
-                
+                int             _pipeFd;
+                pid_t             _pid;
+                time_t          _cgiTime;
+                std::string     _cgiOutput;
                 
         public:
-                Connection(Server* srv, int fd);
+                Connection(Server* srv, int fd, int epollfd);
                 Connection();
                 Connection(Connection const &other);
 		Connection & operator=(Connection const &other);
@@ -64,6 +67,7 @@ class Connection {
                 void            parseRequest(const std::string& data);
 
                 //getters
+                int             getEpollFd() const;
                 int             getFd() const;
                 int             getSentlen() const;
                 int             getRespLen() const;
@@ -77,6 +81,10 @@ class Connection {
                 std::string     getRawRequest( void ) const;
                 Request         getRequest(void) const;
                 const Request&  getRequestRef(void) const;
+                int             getpipeFd() const;
+                pid_t           getpid() const;
+                time_t         getcgiTime() const;
+                std::string    getCgioutput() const;
 
                 //setters
                 void    setSentlen(size_t sentLen);
@@ -88,6 +96,10 @@ class Connection {
                 void     setIsThereBody( bool t_or_f );
                 void     setHeaderParsed( bool t_or_f );
                 void     setRawRequest( std::string raw );
+                void     setpipeFd(int pipeFd);
+                void     setpid(pid_t pid);
+                void     setcgiTime(time_t cgiTime);
+                void    setCgioutput(const std::string& cgiOutput);
 
 };
 

@@ -149,48 +149,117 @@ void    WebServer::execute_methods(int fd)
                         response = errorResponse(501, "text/html", &_clients[fd].getServer()->getConfig());
         }
 
+        if(response == "CGI")
+        {
+                int pipefd = _clients[fd].getpipeFd();
+                _cgi_to_client[pipefd] = fd;
+                return;
+        }
         _clients[fd].setResponse(response);
         _clients[fd].setRespLen(response.size());
         _clients[fd].setSentlen(0);
+        handle_client_response(fd);
 }
 
 void    WebServer::handle_client_request(int fd)
 {
-        char buf[400000] = {0};
-        int bytes = recv(fd, buf, sizeof(buf)-1, 0);
+        
+        char buf[8192] = {0};
+        bool is_cgi = false;
+        int bytes;
+        int clientFD;
+        if(_cgi_to_client.count(fd))
+        {
+                is_cgi = true;
+                clientFD = _cgi_to_client[fd];
+        }
+        if(is_cgi)
+                bytes = read(fd, buf, sizeof(buf));
+        else
+                bytes = recv(fd, buf, sizeof(buf), 0);
         if(!bytes)
         {
-                std::cout << "Client fd=" << _clients[fd].getFd() << " disconnected!" << std::endl;
-                close_connection(fd);
+                if(is_cgi)
+                {
+                        int status;
+                        waitpid(_clients[clientFD].getpid(), &status, WNOHANG);
+                        ServerConfig conff = _clients[clientFD].getServer()->getConfig();
+                        std::string output = _clients[clientFD].getCgioutput();
+                        std::string response = cgi_response(output, &conff);
+                        _clients[clientFD].setResponse(response);
+                        _clients[clientFD].setRespLen(response.size());
+                        _clients[clientFD].setSentlen(0);
+                        close(fd);
+                        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                        _cgi_to_client.erase(fd);
+                        handle_client_response(clientFD);
+                }
+                else
+                {
+                        std::cout << "Client fd=" << _clients[fd].getFd() << " disconnected!" << std::endl;
+                        close_connection(fd);
+                }
                 return;
         }
-        if(bytes < 0)
-                return ;
-        buf[bytes] = '\0';
-        _clients[fd].parseRequest(std::string(buf, bytes));
-        if(_clients[fd].getRequest().isError())
+        else if(bytes < 0)
         {
-                std::cout << "---------HERE IN ERRPRRRRRRRRRR" << std::endl;
-                if(!_clients[fd].getRequest().getBody().empty())
-                        std::remove(_clients[fd].getRequest().getBody().c_str());
-                int code = _clients[fd].getRequest().getError();
-                ServerConfig conf = _clients[fd].getServer()->getConfig();
-                std::string resp = errorResponse(code, "text/html", &conf);
-                _clients[fd].setResponse(resp);
-                _clients[fd].setRespLen(resp.size());
-                _clients[fd].setSentlen(0);
-                handle_client_response(fd);
+                if(is_cgi)
+                {
+                        kill_proccess(_clients[clientFD].getpid());
+                        close(fd);
+                        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                        _cgi_to_client.erase(fd);
+                        ServerConfig conff = _clients[clientFD].getServer()->getConfig();
+                        std::string response = errorResponse(502, "text/html", &conff);
+                        _clients[clientFD].setResponse(response);
+                        _clients[clientFD].setRespLen(response.size());
+                        _clients[clientFD].setSentlen(0);
+                        handle_client_response(clientFD);
+                }
+                return;
         }
-        else if(_clients[fd].getParsed())
+        else
         {
-                std::cout << "---------HERE IN EXECUTE METHODS" << std::endl;
-                execute_methods(fd);
-                handle_client_response(fd);
+                if(is_cgi)
+                {
+                        std::string cgi_output = _clients[clientFD].getCgioutput() + std::string(buf, bytes);
+                        _clients[clientFD].setCgioutput(cgi_output);
+                        return;
+                }
+                std::cout << "New request to fd=" << _clients[fd].getFd() << std::endl;
+                _clients[fd].parseRequest(std::string(buf, bytes));
+                if(_clients[fd].getRequest().isError())
+                {
+                        std::cout << "---------HERE IN ERRPRRRRRRRRRR" << std::endl;
+                        if(!_clients[fd].getRequest().getBody().empty())
+                                std::remove(_clients[fd].getRequest().getBody().c_str());
+                        int code = _clients[fd].getRequest().getError();
+                        ServerConfig conf = _clients[fd].getServer()->getConfig();
+                        std::string resp = errorResponse(code, "text/html", &conf);
+                        _clients[fd].setResponse(resp);
+                        _clients[fd].setRespLen(resp.size());
+                        _clients[fd].setSentlen(0);
+                        handle_client_response(fd);
+                }
+                else if(_clients[fd].getParsed())
+                {
+                        std::cout << "---------HERE IN EXECUTE METHODS" << std::endl;
+                        execute_methods(fd);
+                        
+                }
         }
 }
 
 void    WebServer::close_connection(int fd)
 {
+        int pipeFd = _clients[fd].getpipeFd();
+        if (pipeFd != -1)
+        {
+                kill_proccess(_clients[fd].getpid());
+                epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, pipeFd, NULL);
+                close(pipeFd);
+                _cgi_to_client.erase(pipeFd);
+        }
         epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
         _clients.erase(fd);
         close(fd);
@@ -242,7 +311,7 @@ void    WebServer::handle_new_connection(Server *srv)
                         close(client_fd);
                         continue;
                 }   
-                _clients[client_fd] = Connection(srv, client_fd);
+                _clients[client_fd] = Connection(srv, client_fd, _epoll_fd);
                 std::cout << "New client fd=" << client_fd << " to server " <<  srv->getConfig().ip 
                 << ":" << srv->getPort() << std::endl;
         }
@@ -251,33 +320,68 @@ void    WebServer::handle_new_connection(Server *srv)
 void    WebServer::check_timeout()
 {
         std::map<int, Connection>::iterator it;
-        it = _clients.begin();
-        while (it != _clients.end()) 
-        {
-                int fd = it->first;
-                Connection &client = it->second;
-                Request::t_status status = client.getRequest().getStatus(); 
-                
-                if ((difftime(time(NULL), client.get_Lastactive()) > 15 
-                && (status == Request::COMPLETE || status == Request::ERROR))
-                || (difftime(time(NULL), client.get_Lastactive()) > 13 
-                && (status != Request::COMPLETE && status != Request::ERROR)))
-                {
-                        ServerConfig conf = client.getServer()->getConfig();
-                        std::remove(client.getRequest().getBody().c_str());
-                        std::string resp = errorResponse(408, "text/html", &conf);
-                        client.setResponse(resp);
-                        client.setRespLen(resp.size());
-                        client.setSentlen(0);
-                        std::cout << "Timeout client fd=" << client.getFd() << std::endl;
+        static time_t last_check = 0;
+        time_t now = time(NULL);
 
-                        std::map<int, Connection>::iterator next_it = it;
-                        next_it++;
-                        handle_client_response(fd);
-                       it = next_it;
+        if (difftime(now, last_check) >= 2)
+        {
+                std::map<int, int>::iterator cgi_it = _cgi_to_client.begin();
+                while (cgi_it != _cgi_to_client.end()) 
+                {
+                        // int fd = cgi_it->first;
+                        int clientFD = cgi_it->second;
+                        Connection& client = _clients[clientFD];
+                        time_t cgi_time = client.getcgiTime(); 
+                        
+                        if (difftime(now, cgi_time) > 7)
+                        {
+                                std::cout << "Timeout cgi of client fd=" << client.getFd() << std::endl;
+                                kill_proccess(client.getpid());
+                                // close(fd);
+                                // epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                                ServerConfig conff = client.getServer()->getConfig();
+                                std::string response = errorResponse(504, "text/html", &conff);
+                                client.setResponse(response);
+                                client.setRespLen(response.size());
+                                client.setSentlen(0);
+                                cgi_it++;
+                                handle_client_response(client.getFd());
+                                // _cgi_to_client.erase(fd);
+                        }
+                        else
+                                ++cgi_it;
                 }
-                else
-                        ++it;
+
+                it = _clients.begin();
+                while (it != _clients.end()) 
+                {
+                        int fd = it->first;
+                        Connection &client = it->second;
+                        // if (client.getpid() != -1)  // skip clients waiting for CGI
+                        // {
+                        //         ++it;
+                        //         continue;
+                        // }
+                        Request::t_status status = client.getRequest().getStatus(); 
+
+                        if ((difftime(now, client.get_Lastactive()) > 15 
+                        && (status == Request::COMPLETE || status == Request::ERROR))
+                        || (difftime(now, client.get_Lastactive()) > 13 
+                        && (status != Request::COMPLETE && status != Request::ERROR)))
+                        {
+                                ServerConfig conf = client.getServer()->getConfig();
+                                std::remove(client.getRequest().getBody().c_str());
+                                std::string resp = errorResponse(408, "text/html", &conf);
+                                std::cout << "Timeout client fd=" << client.getFd() << std::endl;
+        
+                                send(fd, resp.c_str(), resp.size(), MSG_NOSIGNAL);
+                                it++;
+                                close_connection(fd);
+                        }
+                        else
+                                ++it;
+                }
+                last_check = now;
         }
 }
 
@@ -334,17 +438,21 @@ void    WebServer::runServer()
                         {
                                 std::cout << "Error/hangup on fd="<< fd << std::endl;
 
-                                if (_clients.count(fd) && !_clients[fd].getRequest().getBody().empty())
-                                        std::remove(_clients[fd].getRequest().getBody().c_str());
-                                epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
-                                close_connection(fd);
+                                if (_cgi_to_client.count(fd))
+                                        handle_client_request(fd);
+                                else
+                                {
+                                        if (_clients.count(fd) && !_clients[fd].getRequest().getBody().empty())
+                                                std::remove(_clients[fd].getRequest().getBody().c_str());
+                                        epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                                        close_connection(fd);
+                                }
                                 continue;
                         }
 
                         // ── data ready to recv ──
                         if (ev & EPOLLIN)
                         {
-                                std::cout << "New request to fd=" << _clients[fd].getFd() << std::endl;
                                 handle_client_request(fd);
                                 if(_clients.count(fd))
                                         _clients[fd].setLastactive(time(NULL));

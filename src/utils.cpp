@@ -30,7 +30,7 @@ std::map<std::string, std::string>      setCgiEnv(Connection& client, const Loca
             env["SERVER_NAME"] = "localhost";   
         
 
-        env["SERVER_PORT"] = client.getServer()->getPort().c_str();  
+        env["SERVER_PORT"] = client.getServer()->getPort();  
 
         env["GATEWAY_INTERFACE"] = "CGI/1.1";
         env["SERVER_SOFTWARE"] = "Webserv/1.0";

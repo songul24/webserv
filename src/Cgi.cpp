@@ -153,13 +153,11 @@ std::string handle_dir_cgi(const ServerConfig& srv, const LocationConfig* lc,std
 	return full;
 }
 
-void    kill_proccess(pid_t pid, int fd, const std::string& cgi)
+void    kill_proccess(pid_t pid)
 {
         int status;
         kill(pid,SIGKILL) ;
 	waitpid(pid,&status,0);
-	close(fd);
-	std::remove(cgi.c_str());
 }
 
 std::string     cgi_response(std::string& output, ServerConfig* conf)
@@ -210,7 +208,6 @@ std::string     cgi_response(std::string& output, ServerConfig* conf)
 }
 
 
-
 std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath, const LocationConfig* loc)
 {
         //scriptPath → the script that exists on server
@@ -218,31 +215,29 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
         // cgiPath → the interpreter to run the script with
         std::cerr << "CGIII: --------#######" << std::endl;
         ServerConfig conf = client.getServer()->getConfig(); 
-        int cgi_fd, status;
         int body_fd = -1;
-        std::string cgiOut = generateRandom_name();  // random name for output temp file
-        cgi_fd   = open(cgiOut.c_str(),  O_CREAT | O_TRUNC | O_WRONLY, 0644); // create output/ STDOUT
-        if(cgi_fd < 0)
+        int pipefd[2];
+        
+        if(pipe(pipefd) == -1)
                 return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
-
         if(!bodyPath.empty())
         {
                 body_fd = open(bodyPath.c_str(), O_RDONLY);  // open uploaded file/ STDIN
                 if(body_fd < 0)
                 {
-                        close(cgi_fd);
-                        std::remove(cgiOut.c_str());
+                        close(pipefd[0]);
+                        close(pipefd[1]);
                         return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
                 }
-
         }
 
         pid_t pid = fork();
         if(pid == -1)
         {
-                if(body_fd != -1) close(body_fd);
-                close(cgi_fd);
-                std::remove(cgiOut.c_str());
+                if(body_fd != -1) 
+                        close(body_fd);
+                close(pipefd[0]);
+                close(pipefd[1]);
                 return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
         }
         if(pid == 0)
@@ -266,8 +261,9 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
                         dup2(body_fd, STDIN_FILENO);
                         close(body_fd);
                 }
-                dup2(cgi_fd,   STDOUT_FILENO);
-                close(cgi_fd);
+                dup2(pipefd[1], STDOUT_FILENO);
+                close(pipefd[0]);
+                close(pipefd[1]);
                 execve(cgiPath.c_str(), args, envp);
                 free(args[0]);
                 free(args[1]);
@@ -275,31 +271,126 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
                 exit(1);
         }
         if(body_fd != -1) close(body_fd);
-
-        time_t start = time(NULL);
-        pid_t w = 0;
-        while(w == 0 && (time(NULL) - start) < 7)
+        close(pipefd[1]);
+        if(set_nonblock(pipefd[0]))
         {
-                w = waitpid(pid, &status, WNOHANG);
-                if(w == -1)
-                {
-                        kill_proccess(pid, cgi_fd, cgiOut);
+                        close(pipefd[0]);
+                        kill_proccess(pid);
                         return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
-                }
-                else if (w == pid)
-                {
-                        close(cgi_fd);
-                        if(WIFEXITED(status) && !WEXITSTATUS(status))
-                        {
-                                std::string output = read_File(cgiOut);
-                                std::remove(cgiOut.c_str());
-                                return (cgi_response(output, &conf));
-                        }
-                        std::remove(cgiOut.c_str());
-                        return buildResponse(502, "<h1>502</h1>", "text/html", &conf);
-                }
         }
-        kill_proccess(pid, cgi_fd, cgiOut);
-        return buildResponse(504, "<h1>504 Timeout</h1>", "text/html", &conf);
+        if(add_to_epoll(client.getEpollFd(), pipefd[0], EPOLLIN))
+        {
+                close(pipefd[0]);
+                kill_proccess(pid);
+                return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
+        } 
+        client.setpipeFd(pipefd[0]);
+        client.setpid(pid);
+        client.setcgiTime(time(NULL));
+
+        return "CGI";
 
 }
+
+
+
+
+
+
+
+
+
+
+
+// std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath, const LocationConfig* loc)
+// {
+//         //scriptPath → the script that exists on server
+//         // bodyPath → the body/data the user sent, saved on disk
+//         // cgiPath → the interpreter to run the script with
+//         std::cerr << "CGIII: --------#######" << std::endl;
+//         ServerConfig conf = client.getServer()->getConfig(); 
+//         int cgi_fd, status;
+//         int body_fd = -1;
+//         std::string cgiOut = generateRandom_name();  // random name for output temp file
+//         cgi_fd   = open(cgiOut.c_str(),  O_CREAT | O_TRUNC | O_WRONLY, 0644); // create output/ STDOUT
+//         if(cgi_fd < 0)
+//                 return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
+
+//         if(!bodyPath.empty())
+//         {
+//                 body_fd = open(bodyPath.c_str(), O_RDONLY);  // open uploaded file/ STDIN
+//                 if(body_fd < 0)
+//                 {
+//                         close(cgi_fd);
+//                         std::remove(cgiOut.c_str());
+//                         return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
+//                 }
+
+//         }
+
+//         pid_t pid = fork();
+//         if(pid == -1)
+//         {
+//                 if(body_fd != -1) close(body_fd);
+//                 close(cgi_fd);
+//                 std::remove(cgiOut.c_str());
+//                 return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
+//         }
+//         if(pid == 0)
+//         {
+//                 signal(SIGINT, SIG_IGN);
+//                 std::map<std::string, std::string> envm = setCgiEnv(client, loc);
+//                 char cwd[PATH_MAX];
+//                 getcwd(cwd, sizeof(cwd));
+//                 std::string script = scriptPath;
+//                 if(script.size() >= 2 && script[0] == '.' && script[1] == '/')
+//                     script = script.substr(2);
+//                 envm["SCRIPT_FILENAME"] = std::string(cwd) + "/" + script;
+//                 char **envp = map_to_env(envm);
+//                 char *args[3];
+//                 args[0] = strdup(cgiPath.c_str());
+//                 args[1] = strdup(scriptPath.c_str());
+//                 args[2] = NULL;
+
+//                 if(body_fd != -1)
+//                 {
+//                         dup2(body_fd, STDIN_FILENO);
+//                         close(body_fd);
+//                 }
+//                 dup2(cgi_fd,   STDOUT_FILENO);
+//                 close(cgi_fd);
+//                 execve(cgiPath.c_str(), args, envp);
+//                 free(args[0]);
+//                 free(args[1]);
+//                 free_env(envp);
+//                 exit(1);
+//         }
+//         if(body_fd != -1) close(body_fd);
+
+//         time_t start = time(NULL);
+//         pid_t w = 0;
+//         while(w == 0 && (time(NULL) - start) < 3)
+//         {
+//                 w = waitpid(pid, &status, WNOHANG);
+//                 if(w == -1)
+//                 {
+//                         kill_proccess(pid, cgi_fd, cgiOut);
+//                         return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
+//                 }
+//                 else if (w == pid)
+//                 {
+//                         close(cgi_fd);
+//                         if(WIFEXITED(status) && !WEXITSTATUS(status))
+//                         {
+//                                 std::string output = read_File(cgiOut);
+//                                 std::remove(cgiOut.c_str());
+//                                 return (cgi_response(output, &conf));
+//                         }
+//                         std::remove(cgiOut.c_str());
+//                         return buildResponse(502, "<h1>502</h1>", "text/html", &conf);
+//                 }
+//         }
+//         kill_proccess(pid, cgi_fd, cgiOut);
+//         return buildResponse(504, "<h1>504 Timeout</h1>", "text/html", &conf);
+
+// }
