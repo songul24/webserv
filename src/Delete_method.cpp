@@ -123,6 +123,17 @@ const LocationConfig* find_location(const ServerConfig& config, const std::strin
                                 }
                         }
                 }
+                else if (loc.path.size() > 1 && loc.path[loc.path.size() - 1] == '/')
+                {
+                        if (url + "/" == loc.path)
+                        {
+                                if (loc.path.size() > bestLen)
+                                {
+                                    bestLen = loc.path.size();
+                                    best = &loc;
+                                }
+                        }
+                }
         }
         return best;
 }

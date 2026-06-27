@@ -211,7 +211,7 @@ int	parsemethod( std::string &method, Request &request )
 	// if (method == "HEAD")
 	// 	method = "GET";// a verifier
 	if (method != "GET" && method != "POST" && method != "DELETE")
-		return (501);
+		return (405);
 	request.setMethod(method);
 	return (0);
 }
@@ -239,8 +239,6 @@ int	parseversion( std::string &version, Request &request )
 {
 	if (version != "HTTP/1.0" && version != "HTTP/1.1")
 		return (400);
-	// if (version == "HTTP/1.0")
-	// 	return (505);
 	request.setVersion(version);
 	return (0);
 }
@@ -249,14 +247,11 @@ int	checkheaders( Request &request )
 {
 	std::map<std::string, std::string> h = request.getHeaders();
 	std::string method = request.getMethod();
-
-	if (h.count("transfer-encoding"))
-		return (501);
+	
 	if ((method == "GET" || method == "DELETE") && h.count("content-length"))
 		return (400);
-	// std::cerr << "=== checkheaders DEBUG ===" << std::endl;
-    // std::cerr << "Method: " << method << std::endl;
-    // std::cerr << "max_body_size in Request: " << request.getMaxBodySize() << std::endl;
+	// if (h.count("transfer-encoding"))
+	// 	return (501);
 	if (method == "POST")
 	{
 		if (!h.count("content-length"))
@@ -324,48 +319,6 @@ void setbody( std::string &chunk, Request &request )
         request.setStatus(Request::COMPLETE);
     }
 }
-
-// void	setbody( std::string &chunk, Request &request )
-// {
-// 	// Premier appel : créer le fichier temporaire
-// 	if (request.getFile() == -2)
-// 	{
-// 		std::string filename = generate_name();
-// 		int fd = open(filename.c_str(), O_CREAT | O_WRONLY, 0644);
-// 		if (fd == -1)
-// 		{
-// 			request.setError(500, "Body file open failure");
-// 			return ;
-// 		}
-// 		request.setBodyFile(filename, fd);
-// 	}
-
-// 	size_t bytes_read = request.getBytesRead();
-// 	size_t max        = request.getMaxBodySize();
-
-// 	// Trop de données
-// 	if (bytes_read + chunk.size() > max)
-// 	{
-// 		request.setError(413, "Body larger than Content-Length");
-// 		return ;
-// 	}
-
-// 	if (write(request.getFile(), chunk.c_str(), chunk.size()) == -1)
-// 	{
-// 		request.setError(500, "Body write() failure");
-// 		return ;
-// 	}
-
-// 	request.addBytesRead(chunk.size());
-
-// 	// Body complet
-// 	if (request.getBytesRead() >= max)
-// 	{
-// 		request.closeBodyFile();
-// 		request.setStatus(Request::COMPLETE);
-// 	}
-// }
-
 
 void parse_request( std::string &buffer, Request &request )
 {

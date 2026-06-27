@@ -39,14 +39,14 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
         ServerConfig conf = cnx.getServer()->getConfig();
         if (!cnx.getIsThereBody())
                 return errorResponse(400, "text/html", &conf);
-        
         Request req = cnx.getRequest();
         //get extention
         std::string extention = getExtention(req.getHeaders()["content-type"]);
         if(extention.empty())
         {
-                std::remove(req.getBody().c_str());
-                return errorResponse(415, "text/html", &conf);
+                extention = ".bin"; 
+                // std::remove(req.getBody().c_str());
+                // return errorResponse(415, "text/html", &conf);
         }
        
         std::string root   = loc->root.empty() ? conf.root :loc->root;

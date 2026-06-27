@@ -16,6 +16,7 @@ std::string defaultBody(int code)
                 case 504: return "<h1>504 Gateway Timeout</h1>";
                 default:  return "<h1>Error</h1>";
         }
+        std::cout << "&&&&&&&&&&&&&&& status " << code << std::endl;
 }
 
 std::string errorResponse(int code, const std::string& type, const ServerConfig* conf)
@@ -67,6 +68,7 @@ std::string buildResponse(int code, const std::string &body, const std::string &
                 default:  status = "500 Internal Server Error"; break;
         }
 
+        std::cout << "&&&&&&&&&&&&&&& status " << status << std::endl;
         std::ostringstream res;
         res << "HTTP/1.0 " << status << "\r\nConnection: close\r\n";;
         res << "Content-Type: " << type << "\r\n";

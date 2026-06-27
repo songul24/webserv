@@ -130,15 +130,17 @@ void    WebServer::execute_methods(int fd)
                 const ServerConfig& conf = _clients[fd].getServer()->getConfig();
                 std::string root = (loc && !loc->root.empty()) ? loc->root : conf.root;
                 std::string uri  = _clients[fd].getRequest().getPath();
-                if(loc)
+                if(uri.size() >= loc->path.size())
                         uri = uri.substr(loc->path.size());
+                else
+                        uri = ""; 
                 if (!root.empty() && root[root.size() - 1] == '/' && !uri.empty() && uri[0] == '/')
                         uri = uri.substr(1);
                 else if (!root.empty() && root[root.size() - 1] != '/' && !uri.empty() && uri[0] != '/')
                         root += '/';
                 std::string file_path = root + uri;
 
-
+std::cout << "############ path -> " << file_path << std::endl; 
                 if(method == "DELETE")
                         response = Delete_method(_clients[fd], file_path, root);
                 else if(method == "GET")
@@ -146,7 +148,7 @@ void    WebServer::execute_methods(int fd)
                 else if(method == "POST")
                         response = Post_method(_clients[fd], loc, file_path);
                 else
-                        response = errorResponse(501, "text/html", &_clients[fd].getServer()->getConfig());
+                        response = errorResponse(405, "text/html", &_clients[fd].getServer()->getConfig());
         }
 
         if(response == "CGI")
