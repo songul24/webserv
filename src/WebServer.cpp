@@ -70,11 +70,7 @@ std::string     buildRedirect(int code, const std::string& new_url)
 
         switch(code)
         {
-                case 301: statusText = "Moved Permanently"; break;
                 case 302: statusText = "Found"; break;
-                case 303: statusText = "See Other"; break;
-                case 307: statusText = "Temporary Redirect"; break;
-                case 308: statusText = "Permanent Redirect"; break;
                 default:  statusText = "Moved"; break;
         }
 
@@ -289,6 +285,7 @@ void    WebServer::handle_client_response(int fd)
         const std::string& resp = _clients[fd].getResponse();
         int new_sent_byte = sent_byte;
         
+        //MSG_NOSIGNAL: ignor sigpipe and send error
         int n = send(fd, resp.c_str() + sent_byte, total_len - sent_byte, MSG_NOSIGNAL);
         if(n <= 0)
         {
