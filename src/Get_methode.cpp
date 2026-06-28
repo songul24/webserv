@@ -124,8 +124,6 @@ static std::string handleDirectory(const std::string &path, const std::string &u
     bool autoindex = false;
     if (loc != NULL && loc->autoindex)
         autoindex = true;
-    // else
-    //     autoindex = srv.autoindex;
 
     if (autoindex)
         return autoIndex(dir_path, uri, srv);
@@ -136,7 +134,6 @@ std::string  Get_method(Connection &client, const LocationConfig* loc, std::stri
 {
     Request req = client.getRequest();
     ServerConfig srv = client.getServer()->getConfig(); 
-    // req.setMaxBodySize(srv.max_body_size);
     std::string uri = req.getPath();
 
     std::string root = (loc && !loc->root.empty()) ? loc->root : srv.root;

@@ -62,3 +62,5 @@ try:
     print("<b>  = %s</b> <br>" % str(result))
 except:
     print("<b>%s</b>: <br>" %("Something went wrong"))
+
+# ?f_num=10&oper=-&s_num=5

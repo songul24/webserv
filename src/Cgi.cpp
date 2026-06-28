@@ -16,7 +16,6 @@ std::string defaultBody(int code)
                 case 504: return "<h1>504 Gateway Timeout</h1>";
                 default:  return "<h1>Error</h1>";
         }
-        std::cout << "&&&&&&&&&&&&&&& status " << code << std::endl;
 }
 
 std::string errorResponse(int code, const std::string& type, const ServerConfig* conf)
@@ -68,7 +67,6 @@ std::string buildResponse(int code, const std::string &body, const std::string &
                 default:  status = "500 Internal Server Error"; break;
         }
 
-        std::cout << "&&&&&&&&&&&&&&& status " << status << std::endl;
         std::ostringstream res;
         res << "HTTP/1.0 " << status << "\r\nConnection: close\r\n";;
         res << "Content-Type: " << type << "\r\n";
@@ -78,16 +76,6 @@ std::string buildResponse(int code, const std::string &body, const std::string &
         return res.str();
 }
 
-
-// std::string read_File(const std::string& path)
-// {
-//         std::ifstream file(path.c_str(), std::ios::binary);
-//         if (!file.is_open())
-//                 return "";
-//         std::ostringstream ss;
-//         ss << file.rdbuf();
-//         return ss.str();
-// }
 
 std::string read_File(const std::string& path)
 {
@@ -215,7 +203,6 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
         //scriptPath → the script that exists on server
         // bodyPath → the body/data the user sent, saved on disk
         // cgiPath → the interpreter to run the script with
-        std::cerr << "CGIII: --------#######" << std::endl;
         ServerConfig conf = client.getServer()->getConfig(); 
         int body_fd = -1;
         int pipefd[2];
@@ -294,105 +281,3 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
 
 }
 
-
-
-
-
-
-
-
-
-
-
-// std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Connection& client, const std::string& bodyPath, const LocationConfig* loc)
-// {
-//         //scriptPath → the script that exists on server
-//         // bodyPath → the body/data the user sent, saved on disk
-//         // cgiPath → the interpreter to run the script with
-//         std::cerr << "CGIII: --------#######" << std::endl;
-//         ServerConfig conf = client.getServer()->getConfig(); 
-//         int cgi_fd, status;
-//         int body_fd = -1;
-//         std::string cgiOut = generateRandom_name();  // random name for output temp file
-//         cgi_fd   = open(cgiOut.c_str(),  O_CREAT | O_TRUNC | O_WRONLY, 0644); // create output/ STDOUT
-//         if(cgi_fd < 0)
-//                 return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
-
-//         if(!bodyPath.empty())
-//         {
-//                 body_fd = open(bodyPath.c_str(), O_RDONLY);  // open uploaded file/ STDIN
-//                 if(body_fd < 0)
-//                 {
-//                         close(cgi_fd);
-//                         std::remove(cgiOut.c_str());
-//                         return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
-//                 }
-
-//         }
-
-//         pid_t pid = fork();
-//         if(pid == -1)
-//         {
-//                 if(body_fd != -1) close(body_fd);
-//                 close(cgi_fd);
-//                 std::remove(cgiOut.c_str());
-//                 return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
-//         }
-//         if(pid == 0)
-//         {
-//                 signal(SIGINT, SIG_IGN);
-//                 std::map<std::string, std::string> envm = setCgiEnv(client, loc);
-//                 char cwd[PATH_MAX];
-//                 getcwd(cwd, sizeof(cwd));
-//                 std::string script = scriptPath;
-//                 if(script.size() >= 2 && script[0] == '.' && script[1] == '/')
-//                     script = script.substr(2);
-//                 envm["SCRIPT_FILENAME"] = std::string(cwd) + "/" + script;
-//                 char **envp = map_to_env(envm);
-//                 char *args[3];
-//                 args[0] = strdup(cgiPath.c_str());
-//                 args[1] = strdup(scriptPath.c_str());
-//                 args[2] = NULL;
-
-//                 if(body_fd != -1)
-//                 {
-//                         dup2(body_fd, STDIN_FILENO);
-//                         close(body_fd);
-//                 }
-//                 dup2(cgi_fd,   STDOUT_FILENO);
-//                 close(cgi_fd);
-//                 execve(cgiPath.c_str(), args, envp);
-//                 free(args[0]);
-//                 free(args[1]);
-//                 free_env(envp);
-//                 exit(1);
-//         }
-//         if(body_fd != -1) close(body_fd);
-
-//         time_t start = time(NULL);
-//         pid_t w = 0;
-//         while(w == 0 && (time(NULL) - start) < 3)
-//         {
-//                 w = waitpid(pid, &status, WNOHANG);
-//                 if(w == -1)
-//                 {
-//                         kill_proccess(pid, cgi_fd, cgiOut);
-//                         return buildResponse(500, "<h1>500</h1>", "text/html", &conf);
-//                 }
-//                 else if (w == pid)
-//                 {
-//                         close(cgi_fd);
-//                         if(WIFEXITED(status) && !WEXITSTATUS(status))
-//                         {
-//                                 std::string output = read_File(cgiOut);
-//                                 std::remove(cgiOut.c_str());
-//                                 return (cgi_response(output, &conf));
-//                         }
-//                         std::remove(cgiOut.c_str());
-//                         return buildResponse(502, "<h1>502</h1>", "text/html", &conf);
-//                 }
-//         }
-//         kill_proccess(pid, cgi_fd, cgiOut);
-//         return buildResponse(504, "<h1>504 Timeout</h1>", "text/html", &conf);
-
-// }

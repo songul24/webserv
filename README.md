@@ -8,7 +8,7 @@ The project focuses on low-level networking, socket programming, HTTP request ha
 
 # Features
 
-* HTTP/1.1 server
+* HTTP/1.0 server
 * Multiple server blocks
 * Non-blocking sockets
 * `epoll` multiplexing
@@ -52,6 +52,7 @@ server {
     listen 127.0.0.1:8089;
     max_client_body_size 100M;
     root var/www;
+    index index.html;
 
     location / {
         root var/www;
@@ -137,9 +138,10 @@ The server forks a child process, executes the CGI, and sends its output as the 
 ├── README.md
 ├──
 ├── config/
+├── errors/
 │
 ├── include/
-│   ├── configfile.hpp
+│   ├── Configfile.hpp
 │   ├── Request.hpp
 │   ├── Server.hpp
 │   ├── WebServer.hpp
@@ -158,28 +160,11 @@ The server forks a child process, executes the CGI, and sends its output as the 
 │   ├── Cgi.cpp
 │   └── utils.cpp
 │
-├── errors/
-│   ├── 400.html
-│   ├── 403.html
-│   ├── 404.html
-│   ├── 405.html
-│   ├── 408.html
-│   ├── 409.html
-│   ├── 411.html
-│   ├── 413.html
-│   ├── 414.html
-│   ├── 415.html
-│   ├── 500.html
-│   ├── 501.html
-│   ├── 502.html
-│   └── 504.html
 │
 └── var/www
-    ├── session/
+    ├── cgi-bin/
     ├── storage/
     ├── upload/
-    ├── website1/
-    ├── website2/
     ├── website3/
     └── index.html
 ```
@@ -220,4 +205,4 @@ curl -X DELETE http://127.0.0.1:8080/file.txt
 # Authors
 
 * Malika Chaouki
-* Zineb Elgharbaou
+* Zineb Elgharbaoui

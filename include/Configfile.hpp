@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
-#include <sys/wait.h>    // ← AJOUTER pour waitpid
+#include <sys/wait.h> 
 
 #include <cerrno>
 

@@ -5,7 +5,6 @@ std::string generate_name( void )
 {
 	static int counter = 0;
 	std::ostringstream oss;
-	//change to this for POST!!!!!!!
 	oss << "var/www/storage/body_" << getpid() << "_" << counter++;
 	return oss.str();
 }
@@ -143,21 +142,6 @@ bool								Request::isError( void ) const    { return status == ERROR; }
 size_t								Request::getContentLength( void ) const { return content_lenghth; }
 
 
-void	Request::print( void ) const
-{
-	std::cout << "========== REQUEST ==========\n";
-	std::cout << "Method  : |" << method  << "|\n";
-	std::cout << "Path    : |" << path    << "|\n";
-	std::cout << "Query   : |" << query   << "|\n";
-	std::cout << "Version : |" << version << "|\n";
-	std::cout << "Headers :\n";
-	for (std::map<std::string,std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it)
-		std::cout << "  [" << it->first << "] --> " << it->second << "\n";
-	std::cout << "Body file : |" << body << "|\n";
-	std::cout << "Bytes read: " << bytes_read << "\n";
-	std::cout << "Status  : " << status << " | Error: " << error << "\n";
-	std::cout << "=============================\n";
-}
 
 
 std::vector<std::string> split( std::string &s, char sep )
@@ -208,10 +192,8 @@ std::vector<std::string> split( std::string &s, char sep )
 
 int	parsemethod( std::string &method, Request &request )
 {
-	// if (method == "HEAD")
-	// 	method = "GET";// a verifier
 	if (method != "GET" && method != "POST" && method != "DELETE")
-		return (405);
+		return (501);
 	request.setMethod(method);
 	return (0);
 }
@@ -220,8 +202,6 @@ int	parsepath( std::string &path, Request &request )
 {
 	if (path.empty() || path[0] != '/')
 		return (400);
-	if (path.find("..") != std::string::npos)
-		return (403);
 	if (path.size() > 2048)
 		return (414);
 	size_t pos = path.find('?');
@@ -250,15 +230,12 @@ int	checkheaders( Request &request )
 	
 	if ((method == "GET" || method == "DELETE") && h.count("content-length"))
 		return (400);
-	// if (h.count("transfer-encoding"))
-	// 	return (501);
 	if (method == "POST")
 	{
 		if (!h.count("content-length"))
 		{
-			 request.setcontent_lenghth(0);
+			request.setcontent_lenghth(0);
         	return (0);
-			// return (400);
 		}
 		std::istringstream iss(h["content-length"]);
 		size_t cl = 0;
@@ -266,10 +243,7 @@ int	checkheaders( Request &request )
 			return (400);
 		request.setcontent_lenghth(cl);
 		if(cl == 0)
-		{
-			// request.setStatus(Request::COMPLETE);
 			return (0);
-		}
 		if (cl > request.getMaxBodySize() && request.getMaxBodySize() != 0)
 			return (413);
 		if (!h.count("content-type"))

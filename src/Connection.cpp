@@ -39,16 +39,7 @@ Connection& Connection::operator=(Connection const &other)
         return (*this);
 }
 
-Connection::~Connection()
-{
-        
-        // if(_fd != -1)
-        // {
-        //         std::cout << "client " << _fd << "closed!" << std::endl;
-        //         // close(_fd);
-        //         // _fd = -1;
-        // }
-}
+Connection::~Connection(){}
 
 
 
@@ -87,17 +78,11 @@ void            Connection::setCgioutput(const std::string& cgiOutput) {_cgiOutp
 
 
 
-void Connection::parseRequest(const std::string& data)  // ← Changé de const char* à const std::string&
+void Connection::parseRequest(const std::string& data)
 {
     _raw_request += data;
     if(_parsed)
         return;
-    
-    // size_t header_end = _raw_request.find("\r\n\r\n");
-    // if (header_end == std::string::npos)
-    //     return;
- 
-    // _request.setMaxBodySize(_server->getConfig().max_body_size);    
 
     if (_request.getStatus() != Request::BODY)
     {
@@ -109,7 +94,6 @@ void Connection::parseRequest(const std::string& data)  // ← Changé de const 
 
     parse_request(_raw_request, _request);
     
-    // _raw_request.erase(0, header_end + 4); 
     if (_request.isError())
     {
         std::cerr << "Parse error: " << _request.getError() << std::endl;

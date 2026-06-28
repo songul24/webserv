@@ -82,6 +82,7 @@ int     deleteURL(std::string& path)
 }
 
 
+
 std::string    Delete_method(Connection& client, std::string& path, std::string& root)
 {
         const ServerConfig config = client.getServer()->getConfig(); 
@@ -90,18 +91,18 @@ std::string    Delete_method(Connection& client, std::string& path, std::string&
                 return buildResponse(status, "", "text/html", &config);
                 
         char resolved[PATH_MAX]; 
-        if(!realpath(path.c_str(), resolved))
+        char res_root[PATH_MAX]; 
+        if(!realpath(path.c_str(), resolved) || !realpath(root.c_str(), res_root))
                 return errorResponse(403, "text/html", &config);
-        if(std::string(resolved).find(root) != 0)
+
+        if(std::string(resolved).find(res_root) != 0)
                 return errorResponse(403, "text/html", &config);
-        
-        return buildResponse(deleteURL(path), "", "text/html", NULL);
+
+        return buildResponse(deleteURL(path), "", "text/html", &config);
 }
 
 
 
-
-// matching location for a URL
 const LocationConfig* find_location(const ServerConfig& config, const std::string& url)
 {
         const LocationConfig* best = NULL;
@@ -138,7 +139,7 @@ const LocationConfig* find_location(const ServerConfig& config, const std::strin
         return best;
 }
 
-//check if method is allowed in confg
+
 bool is_method_allowed(const std::string& method, const std::vector<std::string>& methods)
 {
         for (size_t i = 0; i < methods.size(); i++)

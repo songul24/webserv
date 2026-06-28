@@ -81,7 +81,7 @@ class Request
 		void	print( void ) const;
 };
 
-// Seule fonction publique de parsing
+
 void	parse_request( std::string &buffer, Request &request );
 
 # endif

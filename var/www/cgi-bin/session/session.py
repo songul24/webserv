@@ -8,11 +8,11 @@ import json
 import http.cookies
 
 STATIC_DIR = os.environ.get("SCRIPT_ROOT", "")
-BASE         = os.path.join(STATIC_DIR, "var/www/session")
-LOGIN_PAGE   = os.path.join(BASE, "session_login.html")
-HOME_PAGE    = os.path.join(BASE, "session_home.html")
-WELCOME_PAGE = os.path.join(BASE, "session_welcome.html")
-SESSION_DB   = os.path.join(BASE, "session_database.json")
+BASE         = os.path.join(STATIC_DIR, "var/www/cgi-bin")
+LOGIN_PAGE   = os.path.join(BASE, "session/session_login.html")
+HOME_PAGE    = os.path.join(BASE, "session/session_home.html")
+WELCOME_PAGE = os.path.join(BASE, "session/session_welcome.html")
+SESSION_DB   = os.path.join(BASE, "session/session_database.json")
 
 def load_db():
     if not os.path.exists(SESSION_DB):

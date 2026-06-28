@@ -7,9 +7,7 @@
 #include <sys/types.h>    // For portability
 #include <sys/socket.h>   // For socket-related constants
 #include <netdb.h>        // For getaddrinfo, struct addrinfo, etc.
-// #include <netinet/in.h>
 #include <arpa/inet.h>
-// #include <sys/wait.h>
 #include <cerrno>   // For errno
 #include <cstring>  // For strerror
 #include <unistd.h>
@@ -63,7 +61,7 @@ class Connection {
 		Connection & operator=(Connection const &other);
 		~Connection();
                 
-                // The parse request method :)
+
                 void            parseRequest(const std::string& data);
 
                 //getters

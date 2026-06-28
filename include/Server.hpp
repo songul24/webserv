@@ -27,7 +27,7 @@ class Server
 
                 void    setFd(int fd);
                 void    setConfig(const ServerConfig& config);
-                int setup();  // socket(), bind(), listen(), epoll_create()
+                int setup();  // socket(), bind(), listen()
                 
 };
 

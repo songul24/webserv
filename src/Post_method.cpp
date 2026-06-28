@@ -40,13 +40,12 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
         if (!cnx.getIsThereBody())
                 return errorResponse(400, "text/html", &conf);
         Request req = cnx.getRequest();
-        //get extention
         std::string extention = getExtention(req.getHeaders()["content-type"]);
         if(extention.empty())
         {
-                extention = ".bin"; 
-                // std::remove(req.getBody().c_str());
-                // return errorResponse(415, "text/html", &conf);
+                if(!req.getBody().empty())
+                        std::remove(req.getBody().c_str());
+                return errorResponse(415, "text/html", &conf);
         }
        
         std::string root   = loc->root.empty() ? conf.root :loc->root;
@@ -64,17 +63,15 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
                 upload_path += "/" + filename;
                 if(std::rename(req.getBody().c_str(), upload_path.c_str()))
                 {
-                        std::cerr << "rename failed: " << strerror(errno)
-              << " | src: " << req.getBody()
-              << " | dst: " << upload_path << std::endl;
-                        std::remove(req.getBody().c_str());
+                        std::cerr << "rename failed: " << strerror(errno) << std::endl;
+                        if(!req.getBody().empty())
+                                std::remove(req.getBody().c_str());
                         return errorResponse(500, "text/html", &conf);
                 }
                 std::string cgi_path = is_cgi(conf, loc, path);
-                std::cerr << "path: [" << path << "]" << std::endl;
                 if(stat(path.c_str(), &buf))
                 {
-                         std::remove(upload_path.c_str());
+                        std::remove(upload_path.c_str());
                         return errorResponse(404, "text/html", &conf);
                 }
                 else if(S_ISREG(buf.st_mode) && !cgi_path.empty())
@@ -100,7 +97,8 @@ std::string    Post_method(Connection &cnx, const LocationConfig* loc, std::stri
         }
         else
         {
-                std::remove(req.getBody().c_str());
+                if(!req.getBody().empty())
+                        std::remove(req.getBody().c_str());
                 return errorResponse(500, "text/html", NULL);
         }
 }
