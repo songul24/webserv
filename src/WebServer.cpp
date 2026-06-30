@@ -47,6 +47,8 @@ void    WebServer::setupServer(const std::string& configPath)
         std::vector<std::string> tokens = config.tokenize(content);
         std::vector<ServerConfig> config_servers = config.parseServers(tokens);
 
+        mkdir("var/www/storage", 0755);
+        mkdir("var/www/upload", 0755);
         _fd_to_server.clear();
         _servers.reserve(config_servers.size());
         for(size_t i = 0; i < config_servers.size(); i++)

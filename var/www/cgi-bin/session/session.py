@@ -1,6 +1,9 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 import os
 import cgi
 import uuid
@@ -8,11 +11,12 @@ import json
 import http.cookies
 
 STATIC_DIR = os.environ.get("SCRIPT_ROOT", "")
-BASE         = os.path.join(STATIC_DIR, "var/www/cgi-bin")
-LOGIN_PAGE   = os.path.join(BASE, "session/session_login.html")
-HOME_PAGE    = os.path.join(BASE, "session/session_home.html")
-WELCOME_PAGE = os.path.join(BASE, "session/session_welcome.html")
-SESSION_DB   = os.path.join(BASE, "session/session_database.json")
+# BASE         = os.path.join(STATIC_DIR, "var/www/cgi-bin")
+BASE = os.path.join(os.path.dirname(os.environ["SCRIPT_FILENAME"]), "")
+LOGIN_PAGE   = os.path.join(BASE, "session_login.html")
+HOME_PAGE    = os.path.join(BASE, "session_home.html")
+WELCOME_PAGE = os.path.join(BASE, "session_welcome.html")
+SESSION_DB   = os.path.join(BASE, "session_database.json")
 
 def load_db():
     if not os.path.exists(SESSION_DB):

@@ -238,11 +238,23 @@ std::string    run_cgi(const std::string& cgiPath, std::string scriptPath, Conne
                 std::string script = scriptPath;
                 if(script.size() >= 2 && script[0] == '.' && script[1] == '/')
                     script = script.substr(2);
-                envm["SCRIPT_FILENAME"] = std::string(cwd) + "/" + script;
+                std::string absoluteScript = std::string(cwd) + "/" + script;
+                envm["SCRIPT_FILENAME"] = absoluteScript;               
+                //chdir into the script's own directory
+                size_t lastSlash = absoluteScript.find_last_of('/');
+                if (lastSlash != std::string::npos)
+                {
+                    std::string scriptDir = absoluteScript.substr(0, lastSlash);
+                    if (chdir(scriptDir.c_str()) == -1)
+                    {
+                        exit(1);
+                    }
+                }
+
                 char **envp = map_to_env(envm);
                 char *args[3];
                 args[0] = strdup(cgiPath.c_str());
-                args[1] = strdup(scriptPath.c_str());
+                args[1] = strdup(absoluteScript.c_str());
                 args[2] = NULL;
 
                 if(body_fd != -1)
