@@ -361,6 +361,8 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                     }
                 }
                 server.listens.push_back(listenPair);
+                if (server.listens.size() > 1)
+                    configError("Only one listen directive is allowed per server");
                 if (server.listens.size() == 1) {//si c le premier listen, on set ip et port du server
                     server.ip = listenPair.first;
                     server.port = listenPair.second;
@@ -374,6 +376,8 @@ std::vector<ServerConfig> Configfile::parseServers(std::vector<std::string>& tok
                 server.server_names.clear();
                 while (i < tokens.size() && tokens[i] != ";")
                     server.server_names.push_back(tokens[i++]);
+                if (server.server_names.size() > 1)
+                    configError("Only one server_name is allowed per server");
                 if (i >= tokens.size())
                     configError("Missing ; after server_name");
                 i++; 
